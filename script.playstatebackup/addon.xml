@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="script.playstatebackup"
+	name="PlayState Backup"
+	version="0.1.0.1"
+	provider-name="Lehmden">
+	<requires>
+		<import addon="xbmc.python" version="3.0.1"/>
+	</requires>
+	<extension point="xbmc.python.script" library="default.py"/>
+	<extension point="xbmc.addon.metadata">
+	    <summary lang="de_DE">Sichert die Gesehen Zustände und Resume Zeitpunkte von allen Videos extern ab und schreibt sie bei Bedarf wieder zurück</summary>
+        <summary lang="en_GB">Backs up the "watched" status and resume timestamps for all videos externally and restores them when needed.</summary>
+        <description lang="de_DE">Dieses Addon sichert manuell oder periodisch die Gesehen Zustände und Resume Zeitpunkte von allen Videos extern ab und schreibt sie bei Bedarf wieder zurück. Damit lässt sich bei Datenbank Neuaufbau, Problemen oder Systemwechseln der "Status Quo" jederzeit wiederherstellen. Die Daten werden in einer JSON Datei gespeichert, die manuell oder automatisch gesichert werden kann.
+        </description>
+        <description lang="en_GB">This add-on backs up the "watched" status and resume timestamps for all videos—either manually or periodically—and restores them when needed. This allows the current state to be recovered at any time in the event of a database rebuild, technical issues, or a system migration. The data is stored in a JSON file that can be backed up manually or automatically.
+        </description>
+        <platform>all</platform>
+		<license>GPL-3.0</license>
+	</extension>	
+</addon>
