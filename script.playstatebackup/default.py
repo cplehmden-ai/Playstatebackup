@@ -11,4 +11,4 @@ log_info("started")
 rpc = JsonRPC()
 result = rpc.call("JSONRPC.Version")
 
-log_info(str(result))
+log_debug(str(result))

@@ -14,4 +14,6 @@ def log_error(message):
 
 
 def log_debug(message):
-    xbmc.log(f"{LOG_PREFIX} {message}", xbmc.LOGDEBUG)
+    #xbmc.log(f"{LOG_PREFIX} {message}", xbmc.LOGDEBUG)
+    xbmc.log(f"{LOG_PREFIX} {message}", xbmc.LOGINFO)
+    

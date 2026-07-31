@@ -2,7 +2,7 @@ import json
 import xbmc
 
 from lib.constants import RPC_ID
-from lib.logger import log_info
+from lib.logger import log_info, log_debug
 
 class JsonRPC:
 
@@ -23,8 +23,8 @@ class JsonRPC:
         response = json.loads(response_json)
 
 
-        log_info(str(request))    
-        log_info(str(response))
+        log_debug(str(request))    
+        log_debug(str(response))
 
         return response
 
