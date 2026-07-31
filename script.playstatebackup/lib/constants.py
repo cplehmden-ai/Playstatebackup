@@ -5,3 +5,5 @@ LOG_PREFIX = "[PlayState Backup]"
 BACKUP_FORMAT_VERSION = 1
 
 DEFAULT_BACKUP_FILENAME = "playstate_backup.json"
+
+RPC_ID = 1
