@@ -2,7 +2,7 @@ import json
 import xbmc
 
 from lib.constants import RPC_ID
-from lib.logger import log_info, log_debug
+from lib.logger import log_info, log_debug, log_error
 
 class JsonRPC:
 
@@ -18,13 +18,38 @@ class JsonRPC:
         if params is not None:
             request["params"] = params  
 
+        log_debug(str(request))
+
         request_json = json.dumps(request)
+
         response_json = xbmc.executeJSONRPC(request_json)
-        response = json.loads(response_json)
 
+        try:
+            response = json.loads(response_json)
+        except Exception as e:
+            log_error("Invalid JSON response: {}".format(e))
+            log_error(response_json)
+            return None
 
-        log_debug(str(request))    
+        if "error" in response:
+            log_error(str(response["error"]))
+
         log_debug(str(response))
 
         return response
+    
+    def version(self):
+        return self.call("JSONRPC.Version")
 
+    def get_setting_value(self, setting_name):
+        response = self.call(
+            "Settings.GetSettingValue",
+            {
+                "setting": setting_name
+            }
+        )
+
+        if response and "result" in response:
+            return response["result"]["value"]
+
+        return None

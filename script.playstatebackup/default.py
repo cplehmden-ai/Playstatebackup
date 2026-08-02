@@ -1,14 +1,10 @@
-from lib.logger import (
-    log_info,
-    log_warning,
-    log_error,
-    log_debug,
-)
+from lib.logger import log_info
 from lib.jsonrpc import JsonRPC
 
 log_info("started")
 
 rpc = JsonRPC()
-result = rpc.call("JSONRPC.Version")
 
-log_debug(str(result))
+rpc.version()
+
+log_info(rpc.get_setting_value("locale.language"))
