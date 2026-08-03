@@ -52,4 +52,27 @@ class JsonRPC:
         if response and "result" in response:
             return response["result"]["value"]
 
-        return None
+        return None  
+
+    def files_get_directory(self, directory):
+
+        params = {
+            "directory": directory,
+            "media": "video",
+            "properties": [
+                "dateadded",
+                "playcount",
+                "lastplayed",
+                "resume"
+            ]
+        }
+
+        response = self.call("Files.GetDirectory", params)
+
+        if not response:
+            return []
+
+        if "result" not in response:
+            return []
+
+        return response["result"].get("files", [])    
