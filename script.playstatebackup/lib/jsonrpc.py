@@ -76,3 +76,5 @@ class JsonRPC:
             return []
 
         return response["result"].get("files", [])    
+
+    
