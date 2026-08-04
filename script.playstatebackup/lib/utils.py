@@ -11,24 +11,32 @@ def normalize(path):
 def select_directory():
     dialog = xbmcgui.Dialog()
 
-    return dialog.browseSingle(
+    directory = dialog.browseSingle(
         0,
         ADDON.getLocalizedString(30001),
         "files"
     )
 
-def build_file_index(directory):
+    if not directory:
+        return ""
 
-    rpc = JsonRPC()
+    return normalize(directory)
 
-    result = rpc.files_get_directory(directory)
+#def build_file_index(directory):
 
-    if not result:
-        return {}
+#    rpc = JsonRPC()
 
-    index = {}
+#    result = rpc.files_get_directory(directory)
 
-    for item in result:
-        index[normalize(item["file"])] = item
+#    if not result:
+#        return {}
 
-    return index
+#    index = {}
+
+#    for item in result:
+#        index[normalize(item["file"])] = item
+
+#    return index
+
+def find_file(file_index, path):
+    return file_index.get(normalize(path))

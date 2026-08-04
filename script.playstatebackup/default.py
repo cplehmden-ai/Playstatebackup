@@ -1,19 +1,30 @@
+import xbmc
+import time
 from lib.logger import log_info
 from lib.jsonrpc import JsonRPC
-from lib.utils import select_directory, build_file_index
+from lib.utils import select_directory
+from lib.videodb import VideoDB
 
-log_info("started")
+def main():
+    log_info("started")
 
-rpc = JsonRPC()
+    rpc = JsonRPC()
+    videodb = VideoDB(rpc)
 
-directory = select_directory()
+    directory = select_directory()
 
-rpc.version()
+    if not directory:
+        return
 
-log_info(rpc.get_setting_value("locale.language"))
+    start = time.time()
+    log_info("Opening directory: {}".format(directory))
 
-if directory:
-    files = build_file_index(directory)
-    log_info("Indexed files: {}".format(len(files)))
+    videodb.open_directory(directory)
+    videodb.wait_for_directory(directory)
+    log_info("All files in directory are ready")
+    elapsed = time.time() - start
+    log_info("Elapsed time: {:.2f} seconds".format(elapsed))
+    xbmc.executebuiltin("Action(Back)")
 
-    log_info("Entries: {}".format(len(files)))
+if __name__ == "__main__":
+    main()
