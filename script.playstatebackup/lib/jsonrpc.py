@@ -54,27 +54,25 @@ class JsonRPC:
 
         return None  
 
-    def files_get_directory(self, directory):
+    def files_get_directory(
+        self,
+        directory,
+        media="video",
+        properties=None,
+    ):
 
         params = {
             "directory": directory,
-            "media": "video",
-            "properties": [
-                "dateadded",
-                "playcount",
-                "lastplayed",
-                "resume"
-            ]
+            "media": media,
         }
+
+        if properties is not None:
+            params["properties"] = properties
 
         response = self.call("Files.GetDirectory", params)
 
         if not response:
-            return []
+            return {}
 
-        if "result" not in response:
-            return []
-
-        return response["result"].get("files", [])    
-
+        return response.get("result", {})
     

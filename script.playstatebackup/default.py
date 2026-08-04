@@ -1,6 +1,6 @@
 import xbmc
 import time
-from lib.logger import log_info
+from lib.logger import log_info, log_error
 from lib.jsonrpc import JsonRPC
 from lib.utils import select_directory
 from lib.videodb import VideoDB
@@ -13,18 +13,16 @@ def main():
 
     directory = select_directory()
 
-    if not directory:
-        return
+    if directory:
 
-    start = time.time()
-    log_info("Opening directory: {}".format(directory))
+        log_info("Opening directory: {}".format(directory))
 
-    videodb.open_directory(directory)
-    videodb.wait_for_directory(directory)
-    log_info("All files in directory are ready")
-    elapsed = time.time() - start
-    log_info("Elapsed time: {:.2f} seconds".format(elapsed))
-    xbmc.executebuiltin("Action(Back)")
+        subdirs = videodb.collect_directories(directory)
+
+        log_info("Found {} subdirectories".format(len(subdirs)))
+
+        for subdir in subdirs:
+            log_info(subdir)
 
 if __name__ == "__main__":
     main()
