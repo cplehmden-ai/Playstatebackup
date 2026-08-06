@@ -75,4 +75,5 @@ class JsonRPC:
             return {}
 
         return response.get("result", {})
+
     

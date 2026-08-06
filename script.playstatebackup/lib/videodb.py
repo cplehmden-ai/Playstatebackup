@@ -10,11 +10,22 @@ class VideoDB:
 
     def get_directory_index(self, directory):
 
-        result = self.rpc.files_get_directory(directory)
+        result = self.rpc.files_get_directory(
+            directory,
+            properties=[
+                "playcount",
+                "lastplayed",
+                "resume",
+                "dateadded",
+            ]
+        )
+
+        if not result:
+            return {}
 
         index = {}
 
-        for item in result:
+        for item in result.get("files", []):
             index[normalize(item["file"])] = item
 
         return index
@@ -81,3 +92,24 @@ class VideoDB:
             )
 
         return directories
+
+    def video_library_get_movies(self):
+
+        result = self.rpc.call("VideoLibrary.GetMovies", {
+            "properties": [
+                "playcount",
+                "lastplayed",
+                "resume",
+                "dateadded",
+                "uniqueid",
+                "file",
+                "title",
+            ]
+        })
+
+        if not result:
+            return []
+
+        return result.get("result", {}).get("movies", [])
+
+
