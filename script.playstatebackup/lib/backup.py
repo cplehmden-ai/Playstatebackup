@@ -33,6 +33,22 @@ class Backup:
 
         return backup_data
 
+    def backup_paths(self):
+
+        sources = self.videodb.get_video_source_types()
+
+        if not sources:
+            log_info("No video sources found")
+            return False
+
+        self.save_json("backup-path.json", {
+            "sources": sources
+        })
+
+        log_info(f"Backup paths saved: {len(sources)}")
+
+        return True
+
     def create_movie_backup(self, movie):
 
         playcount = movie.get("playcount", 0)
@@ -49,6 +65,7 @@ class Backup:
             "lastplayed": movie.get("lastplayed"),
             "resume": movie.get("resume"),
             "uniqueid": movie.get("uniqueid"),
+            "dateadded": movie.get("dateadded"),
         }
 
         return entry
@@ -69,6 +86,29 @@ class Backup:
             "lastplayed": musicvideo.get("lastplayed"),
             "resume": musicvideo.get("resume"),
             "uniqueid": musicvideo.get("uniqueid"),
+            "dateadded": musicvideo.get("dateadded"),
+        }
+
+        return entry
+
+    def create_episode_backup(self, episode):
+
+        playcount = episode.get("playcount", 0)
+        resume_position = episode.get("resume", {}).get("position", 0)
+
+        if playcount == 0 and resume_position == 0:
+            return None
+
+        entry = {
+            "title": episode.get("title"),
+            "file": episode.get("file"),
+            "season": episode.get("season"),
+            "episode": episode.get("episode"),
+            "playcount": episode.get("playcount"),
+            "lastplayed": episode.get("lastplayed"),
+            "resume": episode.get("resume"),
+            "dateadded": episode.get("dateadded"),
+            "uniqueid": episode.get("uniqueid"),
         }
 
         return entry
@@ -104,7 +144,13 @@ class Backup:
             if entry:
                 backup.append(entry)
 
-        return backup
+        self.save_json("movies.json", {
+            "movies": backup
+        })
+
+        log_info(f"Movies backed up: {len(backup)}")
+
+        return True
     
     def backup_musicvideos(self):
 
@@ -118,28 +164,76 @@ class Backup:
             if entry:
                 backup.append(entry)
 
-        return backup    
+        self.save_json("musicvideos.json", {
+            "musicvideos": backup
+        })
 
-    def backup_videos(self, root_directory):
+        log_info(f"Music videos backed up: {len(backup)}")
+
+        return True
+
+    def backup_episodes(self):
+
+        episodes = self.videodb.video_library_get_episodes()
 
         backup = []
 
-        directories = self.videodb.collect_directories(root_directory)
+        for episode in episodes:
+            entry = self.create_episode_backup(episode)
 
-        for directory in directories:
+            if entry:
+                backup.append(entry)
 
-            index = self.videodb.get_directory_index(directory)
+        self.save_json("episodes.json", {
+            "episodes": backup
+        })
 
-            for video in index.values():
+        log_info(f"Episodes backed up: {len(backup)}")
 
-                entry = self.create_videos_backup(video)
+        return True
 
-                if entry is not None:
-                    backup.append(entry)
+    def backup_videos(self):
+
+        backup = []
+
+        sources = self.videodb.get_video_source_types()
+
+        if not sources:
+            log_info("No video sources found")
+            return False
+
+        for source in sources:
+
+            if source.get("content") != "unknown":
+                continue
+
+            root_directory = source.get("path")
+
+            if not root_directory:
+                continue
+
+            log_info(f"Backing up videos from: {root_directory}")
+
+            directories = self.videodb.collect_directories(root_directory)
+
+            for directory in directories:
+
+                index = self.videodb.get_directory_index(directory)
+
+                for video in index.values():
+
+                    entry = self.create_videos_backup(video)
+
+                    if entry is not None:
+                        backup.append(entry)
+
+        self.save_json("videos.json", {
+            "videos": backup
+        })
 
         log_info(f"Videos backed up: {len(backup)}")
 
-        return backup
+        return True
 
     def save_json(self, filename, data):
 

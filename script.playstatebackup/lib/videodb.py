@@ -258,3 +258,23 @@ class VideoDB:
 
         return result    
 
+    def video_library_get_episodes(self):
+
+        result = self.rpc.call("VideoLibrary.GetEpisodes", {
+            "properties": [
+                "playcount",
+                "lastplayed",
+                "resume",
+                "dateadded",
+                "uniqueid",
+                "file",
+                "title",
+                "season",
+                "episode",
+            ]
+        })
+
+        if not result:
+            return []
+
+        return result.get("result", {}).get("episodes", [])
