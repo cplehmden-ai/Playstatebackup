@@ -69,10 +69,14 @@ class JsonRPC:
         if properties is not None:
             params["properties"] = properties
 
+        log_info(str(params))
+
         response = self.call("Files.GetDirectory", params)
 
         if not response:
             return {}
+
+        log_info(str(response))
 
         return response.get("result", {})
 
