@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon id="script.playstatebackup"
 	name="PlayState Backup"
-	version="0.1.0.85"
+	version="0.1.1.2"
 	provider-name="Lehmden">
 	<requires>
 		<import addon="xbmc.python" version="3.0.1"/>
@@ -16,5 +16,9 @@
         </description>
         <platform>all</platform>
 		<license>GPL-3.0</license>
+		<assets>
+			<icon>resources/media/icon.png</icon>
+			<fanart>resources/media/fanart.jpg</fanart>
+		</assets>
 	</extension>	
 </addon>

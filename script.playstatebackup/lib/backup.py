@@ -5,6 +5,7 @@ import xbmcaddon
 import json
 from lib.videodb import VideoDB
 from lib.logger import log_info, log_error
+from lib.utils import normalize
 
 class Backup:
 
@@ -202,28 +203,52 @@ class Backup:
             log_info("No video sources found")
             return False
 
-        for source in sources:
+        unknown_sources = [
+            source for source in sources
+            if source.get("content") == "unknown"
+        ]
 
-            if source.get("content") != "unknown":
+        blacklist = self.videodb.get_blacklisted_video_sources()
+
+        if not unknown_sources:
+            log_info("No unknown video sources found for backup")
+            self.save_json("videos.json", {"videos": []})
+            return True
+
+        database_entries = self.videodb.get_unknown_video_database_entries()
+
+        if not database_entries:
+            log_info("No unknown video entries found in Kodi database")
+            self.save_json("videos.json", {"videos": []})
+            return True
+
+        for source in unknown_sources:
+            source_path = normalize(source.get("path") or "")
+
+            if not self.videodb.is_source_enabled(source):
+                log_info(f"Skipping disabled source: {source_path}")
                 continue
 
-            root_directory = source.get("path")
-
-            if not root_directory:
+            if source_path in blacklist:
+                log_info(f"Skipping blacklisted source: {source_path}")
                 continue
 
-            log_info(f"Backing up videos from: {root_directory}")
+            log_info(f"Backing up videos from: {source_path}")
 
-            directories = self.videodb.collect_directories(root_directory)
+            for video in database_entries:
+                file_path = normalize(video.get("file") or "")
+                if not file_path:
+                    continue
 
-            for directory in directories:
-
-                index = self.videodb.get_directory_index(directory)
-
-                for video in index.values():
-
+                source_prefix = source_path.rstrip("/")
+                if file_path == source_prefix:
                     entry = self.create_videos_backup(video)
+                    if entry is not None:
+                        backup.append(entry)
+                    continue
 
+                if file_path.startswith(source_prefix + "/"):
+                    entry = self.create_videos_backup(video)
                     if entry is not None:
                         backup.append(entry)
 
@@ -238,12 +263,15 @@ class Backup:
     def save_json(self, filename, data):
 
         addon = xbmcaddon.Addon()
-        profile = xbmcvfs.translatePath(addon.getAddonInfo("profile"))
+        backup_folder = addon.getSetting("backup_folder")
 
-        if not xbmcvfs.exists(profile):
-            xbmcvfs.mkdirs(profile)
+        if not backup_folder:
+            profile_path = xbmcvfs.translatePath("special://profile")
+            backup_folder = os.path.join(profile_path, "addon_data", "script.playstatebackup")
+            os.makedirs(backup_folder, exist_ok=True)
+            addon.setSetting("backup_folder", backup_folder)
 
-        full_filename = os.path.join(profile, filename)
+        full_filename = backup_folder.rstrip("/") + "/" + filename
 
         try:
             with xbmcvfs.File(full_filename, "w") as file:

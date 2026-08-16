@@ -1,1 +1,9 @@
-<settings version="2"></settings>
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+	<category label="30001">
+		<setting id="backup_folder" type="folder" label="30002" default="" />
+		<setting id="select_unknown_video_sources" type="action" label="30003" action="RunScript(script.playstatebackup, action=select_unknown_video_sources)" />
+		<setting id="disabled_video_sources" type="text" visible="false" default="[]" />
+		<setting id="blacklisted_video_sources" type="text" visible="false" default="[]" />
+	</category>
+</settings>

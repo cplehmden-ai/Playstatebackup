@@ -1,6 +1,10 @@
 import xbmcgui
+import os
+import xml.etree.ElementTree as ET
+import xbmcvfs
 from lib.constants import ADDON
 from lib.jsonrpc import JsonRPC
+from lib.logger import log_info
 
 def normalize(path):
     if not path:
@@ -22,21 +26,26 @@ def select_directory():
 
     return normalize(directory)
 
-#def build_file_index(directory):
-
-#    rpc = JsonRPC()
-
-#    result = rpc.files_get_directory(directory)
-
-#    if not result:
-#        return {}
-
-#    index = {}
-
-#    for item in result:
-#        index[normalize(item["file"])] = item
-
-#    return index
-
 def find_file(file_index, path):
     return file_index.get(normalize(path))
+
+def read_mysql_credentials():
+
+    xml_path = xbmcvfs.translatePath('special://userdata/advancedsettings.xml')
+
+    my_setting_value = 'default_value'
+
+    if os.path.exists(xml_path):
+        try:
+            tree = ET.parse(xml_path)
+            root = tree.getroot()
+            
+            node = root.find('.//videodatabase/host')
+            if node is not None and node.text:
+                my_setting_value = node.text
+                
+        except ET.ParseError as e:
+            log_info(f"Fehler beim Lesen der advancedsettings.xml: {e}")
+
+    # Verwenden des Wertes im Add-on
+    log_info(f"Gelesener Wert: {my_setting_value}")

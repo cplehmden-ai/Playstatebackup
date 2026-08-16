@@ -80,4 +80,29 @@ class JsonRPC:
 
         return response.get("result", {})
 
+    def files_get_file_details(
+        self,
+        file,
+        media="video",
+        properties=None,
+    ):
+
+        params = {
+            "file": file,
+            "media": media,
+        }
+
+        if properties is not None:
+            params["properties"] = properties
+
+        log_info(str(params))
+
+        response = self.call("Files.GetFileDetails", params)
+
+        if not response:
+            return {}
+
+        log_info(str(response))
+
+        return response.get("result", {})
     

@@ -11,5 +11,13 @@ msgstr ""
 "Language: en\n"
 
 msgctxt "#30001"
-msgid "Select Folder"
+msgid "Settings"
 msgstr ""
+
+msgctxt "#30002"
+msgid "Select storage folder"
+msgstr ""
+
+msgctxt "#30003"
+msgid "Exclude unknown video sources"
+msgstr "Exclude unknown video sources"
