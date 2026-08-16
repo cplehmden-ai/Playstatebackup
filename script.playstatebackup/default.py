@@ -143,8 +143,9 @@ def main():
 
     log_info("Starting backup")
     backup.backup_paths()
-    backup.backup_episodes()
     backup.backup_movies()
+    backup.backup_musicvideos()
+    backup.backup_episodes()
     backup.backup_videos()
 
 
