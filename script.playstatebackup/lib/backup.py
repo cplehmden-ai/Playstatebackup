@@ -282,7 +282,13 @@ class Backup:
             log_error("Failed to get or create daily backup folder")
             return False
 
-        full_filename = backup_folder.rstrip("/") + "/" + filename
+        # Give each backup run its own timestamped filename so the previous
+        # version is not overwritten and can serve as a fallback copy
+        base_name, ext = filename.rsplit(".", 1)
+        timestamp = datetime.now().strftime("%H%M%S")
+        versioned_filename = f"{base_name}_{timestamp}.{ext}"
+
+        full_filename = backup_folder.rstrip("/") + "/" + versioned_filename
 
         try:
             with xbmcvfs.File(full_filename, "w") as file:
@@ -293,10 +299,10 @@ class Backup:
                 )
                 file.write(text)
 
-            log_info(f"Saved '{filename}' to {today}")
+            log_info(f"Saved '{versioned_filename}' to {today}")
             
-            # Cleanup old versions for today (keep 2 most recent)
-            self.backup_manager.cleanup_backup_versions_for_date(today, max_versions=2)
+            # Cleanup old versions of this backup type for today (keep 2 most recent)
+            self.backup_manager.cleanup_backup_versions_for_date(today, base_name, max_versions=2)
             
             return True
 

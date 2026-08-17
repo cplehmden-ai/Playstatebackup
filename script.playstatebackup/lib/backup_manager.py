@@ -145,10 +145,12 @@ class BackupManager:
             log_error(f"Cleanup failed: {e}")
             return False
 
-    def cleanup_backup_versions_for_date(self, date=None, max_versions=2):
+    def cleanup_backup_versions_for_date(self, date=None, base_name=None, max_versions=2):
         """
-        Keep only max_versions most recent backups for a given date
-        Deletes older backups from the same day
+        Keep only max_versions most recent backups of a given type (base_name)
+        for a given date. Deletes older backups of that same type.
+        base_name identifies the backup type (e.g. "movies", "episodes") and
+        matches files named "<base_name>_<timestamp>.json".
         """
         try:
             folder_path = self.get_backup_folder_for_date(date)
@@ -156,8 +158,8 @@ class BackupManager:
             if not xbmcvfs.exists(folder_path):
                 return True
 
-            # Get all backup files in the folder, sorted by filename (which preserves chronological order)
-            backup_files = self._get_backup_files_sorted(folder_path)
+            # Get backup files of this type, sorted (newest first)
+            backup_files = self._get_backup_files_sorted(folder_path, base_name)
             
             if len(backup_files) <= max_versions:
                 return True
@@ -171,16 +173,17 @@ class BackupManager:
                 else:
                     log_error(f"Failed to delete backup file: {file_path}")
 
-            log_info(f"Version cleanup: kept {max_versions} most recent backups for {date}")
+            log_info(f"Version cleanup: kept {max_versions} most recent '{base_name}' backups for {date}")
             return True
         except Exception as e:
             log_error(f"Version cleanup failed: {e}")
             return False
 
-    def _get_backup_files_sorted(self, folder_path):
+    def _get_backup_files_sorted(self, folder_path, base_name=None):
         """
-        Get all backup JSON files in a folder
-        Returns list of file paths (reverse sorted by name, newest last)
+        Get backup JSON files in a folder, optionally filtered to those
+        belonging to a specific backup type (base_name).
+        Returns list of file paths, newest first (filenames are timestamp-sortable).
         """
         try:
             files = []
@@ -193,12 +196,17 @@ class BackupManager:
             else:
                 backup_filenames = entries
 
-            for filename in backup_filenames:
-                if filename.endswith(".json"):
-                    file_path = self._join_path(folder_path, filename)
-                    files.append(file_path)
+            prefix = f"{base_name}_" if base_name else None
 
-            # Sort by filename reverse (oldest first in list, so we delete from the end)
+            for filename in backup_filenames:
+                if not filename.endswith(".json"):
+                    continue
+                if prefix and not filename.startswith(prefix):
+                    continue
+                file_path = self._join_path(folder_path, filename)
+                files.append(file_path)
+
+            # Filenames end in a timestamp, so reverse-sorting by name puts newest first
             files.sort(reverse=True)
             return files
         except Exception as e:
