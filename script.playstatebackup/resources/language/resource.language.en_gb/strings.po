@@ -20,4 +20,36 @@ msgstr ""
 
 msgctxt "#30003"
 msgid "Exclude unknown video sources"
-msgstr "Exclude unknown video sources"
+msgstr ""
+
+msgctxt "#30010"
+msgid "Backup retention (days)"
+msgstr ""
+
+msgctxt "#30020"
+msgid "Automatic Backup"
+msgstr ""
+
+msgctxt "#30021"
+msgid "Auto-backup mode"
+msgstr ""
+
+msgctxt "#30022"
+msgid "Disabled"
+msgstr ""
+
+msgctxt "#30023"
+msgid "At Kodi startup"
+msgstr ""
+
+msgctxt "#30024"
+msgid "Interval-based"
+msgstr ""
+
+msgctxt "#30025"
+msgid "Startup delay (seconds)"
+msgstr ""
+
+msgctxt "#30026"
+msgid "Backup interval (minutes)"
+msgstr ""

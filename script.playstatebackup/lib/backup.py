@@ -3,15 +3,19 @@ import os
 import xbmcvfs
 import xbmcaddon
 import json
+from datetime import datetime
 from lib.videodb import VideoDB
 from lib.logger import log_info, log_error
 from lib.utils import normalize
+from lib.backup_manager import BackupManager
 
 class Backup:
 
     def __init__(self, rpc, videodb):
             self.rpc = rpc
             self.videodb = videodb
+            self.backup_manager = BackupManager()
+            self._daily_cleanup_done = False
 
     def backup_directory(self, directory):
 
@@ -261,15 +265,22 @@ class Backup:
         return True
 
     def save_json(self, filename, data):
+        """
+        Save backup data to a JSON file in the daily backup folder
+        Handles daily cleanup of old backups if this is the first backup of the day
+        """
+        # Perform daily cleanup if this is the first backup of the day
+        if not self._daily_cleanup_done:
+            self._perform_daily_cleanup()
+            self._daily_cleanup_done = True
 
-        addon = xbmcaddon.Addon()
-        backup_folder = addon.getSetting("backup_folder")
+        # Get today's backup folder
+        today = datetime.now().strftime("%Y-%m-%d")
+        backup_folder = self.backup_manager.ensure_backup_folder_for_date(today)
 
         if not backup_folder:
-            profile_path = xbmcvfs.translatePath("special://profile")
-            backup_folder = os.path.join(profile_path, "addon_data", "script.playstatebackup")
-            os.makedirs(backup_folder, exist_ok=True)
-            addon.setSetting("backup_folder", backup_folder)
+            log_error("Failed to get or create daily backup folder")
+            return False
 
         full_filename = backup_folder.rstrip("/") + "/" + filename
 
@@ -282,9 +293,27 @@ class Backup:
                 )
                 file.write(text)
 
-            log_info("Saved '{}'".format(filename))
+            log_info(f"Saved '{filename}' to {today}")
+            
+            # Cleanup old versions for today (keep 2 most recent)
+            self.backup_manager.cleanup_backup_versions_for_date(today, max_versions=2)
+            
             return True
 
         except Exception as e:
             log_error("Failed to save '{}': {}".format(filename, e))
             return False
+
+    def _perform_daily_cleanup(self):
+        """
+        Perform daily cleanup of old backup folders
+        Should be called once per day on the first backup
+        """
+        try:
+            if self.backup_manager.should_run_daily_cleanup():
+                log_info("Running daily backup cleanup...")
+                self.backup_manager.cleanup_old_daily_folders()
+            else:
+                log_info("Daily cleanup already performed today")
+        except Exception as e:
+            log_error(f"Daily cleanup error: {e}")

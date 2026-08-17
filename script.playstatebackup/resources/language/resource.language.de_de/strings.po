@@ -21,3 +21,35 @@ msgstr "Backup-Speicherplatz auswählen"
 msgctxt "#30003"
 msgid "Exclude unknown video sources"
 msgstr "Unbekannte Videoquellen ausschließen"
+
+msgctxt "#30010"
+msgid "Backup retention (days)"
+msgstr "Backup-Aufbewahrung (Tage)"
+
+msgctxt "#30020"
+msgid "Automatic Backup"
+msgstr "Automatische Sicherung"
+
+msgctxt "#30021"
+msgid "Auto-backup mode"
+msgstr "Automatische Sicherungsmodus"
+
+msgctxt "#30022"
+msgid "Disabled"
+msgstr "Deaktiviert"
+
+msgctxt "#30023"
+msgid "At Kodi startup"
+msgstr "Beim Kodi-Start"
+
+msgctxt "#30024"
+msgid "Interval-based"
+msgstr "Zeitbasiert"
+
+msgctxt "#30025"
+msgid "Startup delay (seconds)"
+msgstr "Startverzögerung (Sekunden)"
+
+msgctxt "#30026"
+msgid "Backup interval (minutes)"
+msgstr "Sicherungsintervall (Minuten)"
