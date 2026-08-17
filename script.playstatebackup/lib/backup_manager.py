@@ -93,7 +93,7 @@ class BackupManager:
 
             entries = xbmcvfs.listdir(self.backup_folder)
             if isinstance(entries, tuple):
-                _, daily_folders = entries
+                daily_folders, _ = entries
             else:
                 daily_folders = entries
 
@@ -145,74 +145,6 @@ class BackupManager:
             log_error(f"Cleanup failed: {e}")
             return False
 
-    def cleanup_backup_versions_for_date(self, date=None, base_name=None, max_versions=2):
-        """
-        Keep only max_versions most recent backups of a given type (base_name)
-        for a given date. Deletes older backups of that same type.
-        base_name identifies the backup type (e.g. "movies", "episodes") and
-        matches files named "<base_name>_<timestamp>.json".
-        """
-        try:
-            folder_path = self.get_backup_folder_for_date(date)
-            
-            if not xbmcvfs.exists(folder_path):
-                return True
-
-            # Get backup files of this type, sorted (newest first)
-            backup_files = self._get_backup_files_sorted(folder_path, base_name)
-            
-            if len(backup_files) <= max_versions:
-                return True
-
-            files_to_delete = backup_files[max_versions:]
-            
-            for file_path in files_to_delete:
-                if self._delete_file(file_path):
-                    file_name = file_path.split("/")[-1]
-                    log_info(f"Deleted old backup version: {file_name}")
-                else:
-                    log_error(f"Failed to delete backup file: {file_path}")
-
-            log_info(f"Version cleanup: kept {max_versions} most recent '{base_name}' backups for {date}")
-            return True
-        except Exception as e:
-            log_error(f"Version cleanup failed: {e}")
-            return False
-
-    def _get_backup_files_sorted(self, folder_path, base_name=None):
-        """
-        Get backup JSON files in a folder, optionally filtered to those
-        belonging to a specific backup type (base_name).
-        Returns list of file paths, newest first (filenames are timestamp-sortable).
-        """
-        try:
-            files = []
-            if not xbmcvfs.exists(folder_path):
-                return files
-
-            entries = xbmcvfs.listdir(folder_path)
-            if isinstance(entries, tuple):
-                backup_filenames, _ = entries
-            else:
-                backup_filenames = entries
-
-            prefix = f"{base_name}_" if base_name else None
-
-            for filename in backup_filenames:
-                if not filename.endswith(".json"):
-                    continue
-                if prefix and not filename.startswith(prefix):
-                    continue
-                file_path = self._join_path(folder_path, filename)
-                files.append(file_path)
-
-            # Filenames end in a timestamp, so reverse-sorting by name puts newest first
-            files.sort(reverse=True)
-            return files
-        except Exception as e:
-            log_error(f"Failed to get backup files from {folder_path}: {e}")
-            return []
-
     def _delete_file(self, file_path):
         """Delete a single file"""
         try:
@@ -232,7 +164,7 @@ class BackupManager:
             # Delete all files in the folder first
             entries = xbmcvfs.listdir(folder_path)
             if isinstance(entries, tuple):
-                files, subfolders = entries
+                subfolders, files = entries
             else:
                 files = entries
                 subfolders = []
@@ -272,7 +204,7 @@ class BackupManager:
             # If folder exists but is empty, it's the first backup
             entries = xbmcvfs.listdir(folder_path)
             if isinstance(entries, tuple):
-                files, _ = entries
+                subfolders, files = entries
             else:
                 files = entries
             

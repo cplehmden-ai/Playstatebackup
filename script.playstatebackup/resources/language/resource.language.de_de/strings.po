@@ -47,8 +47,8 @@ msgid "Interval-based"
 msgstr "Zeitbasiert"
 
 msgctxt "#30025"
-msgid "Startup delay (seconds)"
-msgstr "Startverzögerung (Sekunden)"
+msgid "Delay before first backup (seconds)"
+msgstr "Verzögerung vor dem ersten Backup (Sekunden)"
 
 msgctxt "#30026"
 msgid "Backup interval (minutes)"

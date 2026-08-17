@@ -128,8 +128,14 @@ class AutoBackupService:
         # Handle interval-based backup
         if mode == self.MODE_INTERVAL:
             interval_minutes = settings["interval_minutes"]
+            startup_delay = settings["startup_delay"]
             log_info(f"Interval-based backup configured: every {interval_minutes} minutes")
-            
+            log_info(f"First backup delayed by {startup_delay} seconds to let Kodi finish starting up")
+
+            # Wait for startup delay before the first backup is even considered
+            if self.monitor.waitForAbort(startup_delay):
+                return
+
             # Service loop - check periodically
             check_interval = 60  # Check every minute
             

@@ -9,7 +9,7 @@
 	</category>
 	<category label="30020">
 		<setting id="backup_auto_mode" type="select" label="30021" default="0" lvalues="30022|30023|30024" />
-		<setting id="backup_auto_startup_delay" type="number" label="30025" default="30" enable="eq(-1,1)" />
+		<setting id="backup_auto_startup_delay" type="number" label="30025" default="30" enable="!eq(-1,0)" />
 		<setting id="backup_auto_interval" type="number" label="30026" default="60" enable="eq(-2,2)" />
 	</category>
 </settings>

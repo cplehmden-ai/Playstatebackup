@@ -47,7 +47,7 @@ msgid "Interval-based"
 msgstr ""
 
 msgctxt "#30025"
-msgid "Startup delay (seconds)"
+msgid "Delay before first backup (seconds)"
 msgstr ""
 
 msgctxt "#30026"
