@@ -1,9 +1,7 @@
-import os
-import json
-from datetime import datetime, timedelta
+from datetime import datetime
 import xbmcvfs
 import xbmcaddon
-from lib.logger import log_info, log_error
+from lib.logger import log_debug, log_error
 from lib.utils import normalize
 
 
@@ -128,18 +126,18 @@ class BackupManager:
         try:
             daily_folders = self.get_all_daily_folders()
             if len(daily_folders) <= self.retention_days:
-                log_info(f"Retention check: {len(daily_folders)} folders <= {self.retention_days} days")
+                log_debug(f"Retention check: {len(daily_folders)} folders <= {self.retention_days} days")
                 return True
 
             folders_to_delete = daily_folders[self.retention_days:]
             
             for date_str, folder_path in folders_to_delete:
                 if self._delete_folder_recursively(folder_path):
-                    log_info(f"Deleted old backup folder: {date_str}")
+                    log_debug(f"Deleted old backup folder: {date_str}")
                 else:
                     log_error(f"Failed to delete backup folder: {folder_path}")
 
-            log_info(f"Cleanup complete: deleted {len(folders_to_delete)} old backup folders")
+            log_debug(f"Cleanup complete: deleted {len(folders_to_delete)} old backup folders")
             return True
         except Exception as e:
             log_error(f"Cleanup failed: {e}")

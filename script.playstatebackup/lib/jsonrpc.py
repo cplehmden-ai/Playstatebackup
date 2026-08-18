@@ -2,12 +2,12 @@ import json
 import xbmc
 
 from lib.constants import RPC_ID
-from lib.logger import log_info, log_debug, log_error
+from lib.logger import log_debug, log_error
 
 class JsonRPC:
 
     def __init__(self):
-        log_info("JsonRPC initialized")
+        log_debug("JsonRPC initialized")
 
     def call(self, method, params=None):
         request = {
@@ -69,14 +69,14 @@ class JsonRPC:
         if properties is not None:
             params["properties"] = properties
 
-        log_info(str(params))
+        log_debug(str(params))
 
         response = self.call("Files.GetDirectory", params)
 
         if not response:
             return {}
 
-        log_info(str(response))
+        log_debug(str(response))
 
         return response.get("result", {})
 
@@ -95,14 +95,14 @@ class JsonRPC:
         if properties is not None:
             params["properties"] = properties
 
-        log_info(str(params))
+        log_debug(str(params))
 
         response = self.call("Files.GetFileDetails", params)
 
         if not response:
             return {}
 
-        log_info(str(response))
+        log_debug(str(response))
 
         return response.get("result", {})
     

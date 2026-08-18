@@ -20,7 +20,7 @@ msgstr "Backup-Speicherplatz auswählen"
 
 msgctxt "#30003"
 msgid "Exclude unknown video sources"
-msgstr "Unbekannte Videoquellen ausschließen"
+msgstr "Unkategorisierte Videoquellen ausschließen"
 
 msgctxt "#30010"
 msgid "Backup retention (days)"
@@ -53,3 +53,63 @@ msgstr "Verzögerung vor dem ersten Backup (Sekunden)"
 msgctxt "#30026"
 msgid "Backup interval (minutes)"
 msgstr "Sicherungsintervall (Minuten)"
+
+msgctxt "#30030"
+msgid "Start complete backup"
+msgstr "Komplett-Backup starten"
+
+msgctxt "#30031"
+msgid "Start partial backup"
+msgstr "Partielles Backup starten"
+
+msgctxt "#30032"
+msgid "Start restore"
+msgstr "Restore starten"
+
+msgctxt "#30033"
+msgid "Perform path mapping"
+msgstr "Pfadmapping durchführen"
+
+msgctxt "#30034"
+msgid "PlayState Backup"
+msgstr ""
+
+msgctxt "#30035"
+msgid "Movies"
+msgstr "Filme"
+
+msgctxt "#30036"
+msgid "TV shows"
+msgstr "Serien"
+
+msgctxt "#30037"
+msgid "Music videos"
+msgstr "Musikvideos"
+
+msgctxt "#30038"
+msgid "Uncategorized videos"
+msgstr "Unkategorisierte Videos"
+
+msgctxt "#30039"
+msgid "This feature is not available yet."
+msgstr "Diese Funktion ist noch nicht verfügbar."
+
+msgctxt "#30040"
+msgid "No backup sets found."
+msgstr "Keine Backup-Sätze gefunden."
+
+msgctxt "#30041"
+msgid "Select backup set"
+msgstr "Backup-Satz auswählen"
+
+msgctxt "#30042"
+msgid "No unknown video sources were found.\n\nAll sources are enabled by default."
+msgstr "Keine unkategorisierten Videoquellen gefunden."
+
+msgctxt "#30043"
+msgid "Unknown source"
+msgstr "Unbekannte Quelle"
+
+msgctxt "#30044"
+msgid "Exclude unknown video sources\nOnly sources without a known content type are listed.\nAll sources are enabled by default."
+msgstr "Videoquellen ausschliessen. Es werden nur Quellen vom Inhaltstyp "Keine" aufgelistet."

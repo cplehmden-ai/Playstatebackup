@@ -1,10 +1,8 @@
 import json
 import xbmc
 import lib.constants as constants
-import lib.mysql as mysql
-from lib.jsonrpc import JsonRPC
 from lib.utils import normalize
-from lib.logger import log_info
+from lib.logger import log_debug, log_error
 import os
 import glob
 from xbmcvfs import translatePath
@@ -52,7 +50,7 @@ class VideoDB:
             tree = ET.parse(str(advanced_settings_file))
             return tree.getroot()
         except Exception as e:
-            log_info(f"Fehler beim Parsen von advancedsettings.xml: {e}")
+            log_error(f"Fehler beim Parsen von advancedsettings.xml: {e}")
             return None
 
     def get_mysql_credentials(self) -> Optional[Dict[str, Any]]:
@@ -117,7 +115,7 @@ class VideoDB:
                 connector = importlib.import_module("mysql.connector")
                 return connector
             except ImportError:
-                log_info("mysql.connector nicht gefunden. Bitte führen Sie setup_mysql_connector.py aus.")
+                log_error("mysql.connector nicht gefunden. Bitte führen Sie setup_mysql_connector.py aus.")
                 return None
 
     def get_database_connection(self) -> Optional[Union[sqlite3.Connection, Any]]:
@@ -136,11 +134,11 @@ class VideoDB:
         
         if credentials:
             # MySQL ist konfiguriert - nutze MySQL
-            log_info("MySQL konfiguriert - nutze MySQL Verbindung")
+            log_debug("MySQL konfiguriert - nutze MySQL Verbindung")
             
             connector = self._load_mysql_connector()
             if connector is None:
-                log_info("mysql.connector nicht gefunden. Bitte führen Sie setup_mysql_connector.py aus.")
+                log_error("mysql.connector nicht gefunden. Bitte führen Sie setup_mysql_connector.py aus.")
                 return None
             
             try:
@@ -151,11 +149,11 @@ class VideoDB:
                 if db_version:
                     # Nutze die lokale Versionsnummer für MySQL-Verbindung
                     db_name = f"myvideos{db_version}"
-                    log_info(f"Nutze Datenbank aus lokaler Version: {db_name}")
+                    log_debug(f"Nutze Datenbank aus lokaler Version: {db_name}")
                 else:
                     # Fallback auf Credentials wenn keine lokale DB vorhanden
                     db_name = credentials['name']
-                    log_info(f"Nutze Datenbank aus Credentials: {db_name}")
+                    log_debug(f"Nutze Datenbank aus Credentials: {db_name}")
                 
                 conn = connector.connect(
                     host=credentials['host'],
@@ -165,27 +163,27 @@ class VideoDB:
                     port=credentials['port']
                 )
                 
-                log_info(f"MySQL Verbindung hergestellt: {credentials['host']}/{db_name}")
+                log_debug(f"MySQL Verbindung hergestellt: {credentials['host']}/{db_name}")
                 return conn
             except connector.Error as err:
                 if err.errno == 2003:
-                    log_info(f"MySQL Server nicht erreichbar: {credentials['host']}:{credentials['port']}")
+                    log_error(f"MySQL Server nicht erreichbar: {credentials['host']}:{credentials['port']}")
                 elif err.errno == 1045:
-                    log_info("MySQL Authentifizierungsfehler - Benutzername oder Passwort falsch")
+                    log_error("MySQL Authentifizierungsfehler - Benutzername oder Passwort falsch")
                 elif err.errno == 1049:
-                    log_info(f"MySQL Datenbank nicht gefunden: {db_name}")
+                    log_error(f"MySQL Datenbank nicht gefunden: {db_name}")
                 else:
-                    log_info(f"MySQL Fehler: {err}")
+                    log_error(f"MySQL Fehler: {err}")
                 return None
             except Exception as e:
-                log_info(f"MySQL Verbindung fehlgeschlagen: {e}")
+                log_error(f"MySQL Verbindung fehlgeschlagen: {e}")
                 return None
         
         # MySQL nicht konfiguriert - versuche SQLite
         try:
             db_version = self.get_videodb_version()
             if db_version:
-                log_info(f"Nutze lokale SQLite Videodatenbank (Version: {db_version})")
+                log_debug(f"Nutze lokale SQLite Videodatenbank (Version: {db_version})")
                 
                 # Verbindung zu SQLite aufbauen
                 db_dir = translatePath("special://database/")
@@ -196,12 +194,12 @@ class VideoDB:
                     db_files.sort()
                     latest_db_path = db_files[-1]
                     conn = sqlite3.connect(latest_db_path)
-                    log_info(f"SQLite Verbindung hergestellt: {latest_db_path}")
+                    log_debug(f"SQLite Verbindung hergestellt: {latest_db_path}")
                     return conn
         except Exception as e:
-            log_info(f"SQLite nicht verfügbar: {e}")
+            log_error(f"SQLite nicht verfügbar: {e}")
         
-        log_info("Keine Datenbankverbindung möglich")
+        log_error("Keine Datenbankverbindung möglich")
         return None
 
     def get_database_type(self) -> Optional[str]:
@@ -241,16 +239,16 @@ class VideoDB:
             latest_db_path = db_files[-1]
             db_filename = os.path.basename(latest_db_path)
             
-            log_info(f"Gefundene DB-Datei: {db_filename}")
+            log_debug(f"Gefundene DB-Datei: {db_filename}")
             
             conn = sqlite3.connect(latest_db_path)
             cursor = conn.cursor()
             try:
                 cursor.execute("SELECT idVersion FROM version")
                 db_version = cursor.fetchone()[0]
-                log_info(f"Interne Datenbank-Version: {db_version}")
+                log_debug(f"Interne Datenbank-Version: {db_version}")
             except Exception as e:
-                log_info(f"Fehler beim Lesen der Version: {e}")
+                log_error(f"Fehler beim Lesen der Version: {e}")
             finally:
                 conn.close()
         return db_version
@@ -501,7 +499,7 @@ class VideoDB:
     def get_unknown_video_database_entries(self):
         conn = self.get_database_connection()
         if conn is None:
-            log_info("No database connection available for unknown video backup")
+            log_error("No database connection available for unknown video backup")
             return []
 
         try:
@@ -509,7 +507,7 @@ class VideoDB:
             bookmark_schema = self._get_bookmark_schema(conn)
 
             if bookmark_schema is None:
-                log_info("Unsupported bookmark schema in Kodi database")
+                log_error("Unsupported bookmark schema in Kodi database")
                 return []
 
             query = f"""
@@ -534,11 +532,11 @@ class VideoDB:
                 cursor.execute(query)
                 raw_rows = cursor.fetchall()
             except Exception as e:
-                log_info(f"Unknown-video query failed for Kodi bookmark schema: {e}")
+                log_error(f"Unknown-video query failed for Kodi bookmark schema: {e}")
                 raw_rows = []
 
             if not raw_rows:
-                log_info("Could not read unknown video entries from Kodi database")
+                log_debug("Could not read unknown video entries from Kodi database")
                 return []
 
             entries = []

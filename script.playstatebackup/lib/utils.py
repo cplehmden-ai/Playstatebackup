@@ -3,8 +3,7 @@ import os
 import xml.etree.ElementTree as ET
 import xbmcvfs
 from lib.constants import ADDON
-from lib.jsonrpc import JsonRPC
-from lib.logger import log_info
+from lib.logger import log_debug, log_error
 
 def normalize(path):
     if not path:
@@ -45,7 +44,7 @@ def read_mysql_credentials():
                 my_setting_value = node.text
                 
         except ET.ParseError as e:
-            log_info(f"Fehler beim Lesen der advancedsettings.xml: {e}")
+            log_error(f"Fehler beim Lesen der advancedsettings.xml: {e}")
 
     # Verwenden des Wertes im Add-on
-    log_info(f"Gelesener Wert: {my_setting_value}")
+    log_debug(f"Gelesener Wert: {my_setting_value}")

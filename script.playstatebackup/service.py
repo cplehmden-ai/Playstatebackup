@@ -1,12 +1,10 @@
 import xbmc
 import xbmcaddon
-import threading
 import time
-from datetime import datetime
 from lib.backup import Backup
 from lib.videodb import VideoDB
 from lib.jsonrpc import JsonRPC
-from lib.logger import log_info, log_error
+from lib.logger import log_debug, log_error
 
 
 class AutoBackupService:
@@ -79,7 +77,7 @@ class AutoBackupService:
     def perform_backup(self):
         """Execute backup operation"""
         try:
-            log_info("Starting automatic backup...")
+            log_debug("Starting automatic backup...")
             
             rpc = JsonRPC()
             videodb = VideoDB(rpc)
@@ -95,7 +93,7 @@ class AutoBackupService:
             }
             
             successful = sum(1 for v in results.values() if v)
-            log_info(f"Automatic backup completed: {successful}/{len(results)} operations successful")
+            log_debug(f"Automatic backup completed: {successful}/{len(results)} operations successful")
             
             return True
         except Exception as e:
@@ -104,19 +102,19 @@ class AutoBackupService:
     
     def run(self):
         """Main service loop"""
-        log_info("Auto-backup service started")
+        log_debug("Auto-backup service started")
         
         settings = self.get_settings()
         mode = settings["mode"]
         
         if mode == self.MODE_DISABLED:
-            log_info("Auto-backup is disabled")
+            log_debug("Auto-backup is disabled")
             return
         
         # Handle startup backup with delay
         if mode == self.MODE_ON_STARTUP:
             startup_delay = settings["startup_delay"]
-            log_info(f"Startup backup scheduled in {startup_delay} seconds")
+            log_debug(f"Startup backup scheduled in {startup_delay} seconds")
             
             # Wait for delay or until abort is requested
             if self.monitor.waitForAbort(startup_delay):
@@ -129,8 +127,8 @@ class AutoBackupService:
         if mode == self.MODE_INTERVAL:
             interval_minutes = settings["interval_minutes"]
             startup_delay = settings["startup_delay"]
-            log_info(f"Interval-based backup configured: every {interval_minutes} minutes")
-            log_info(f"First backup delayed by {startup_delay} seconds to let Kodi finish starting up")
+            log_debug(f"Interval-based backup configured: every {interval_minutes} minutes")
+            log_debug(f"First backup delayed by {startup_delay} seconds to let Kodi finish starting up")
 
             # Wait for startup delay before the first backup is even considered
             if self.monitor.waitForAbort(startup_delay):
@@ -148,7 +146,7 @@ class AutoBackupService:
                 if self.monitor.waitForAbort(check_interval):
                     break
             
-            log_info("Auto-backup service stopped")
+            log_debug("Auto-backup service stopped")
 
 
 def main():

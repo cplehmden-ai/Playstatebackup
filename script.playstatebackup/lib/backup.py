@@ -1,11 +1,7 @@
-#import xbmc
-import os
 import xbmcvfs
-import xbmcaddon
 import json
 from datetime import datetime
-from lib.videodb import VideoDB
-from lib.logger import log_info, log_error
+from lib.logger import log_debug, log_error
 from lib.utils import normalize
 from lib.backup_manager import BackupManager
 
@@ -23,10 +19,10 @@ class Backup:
 
         backup_data = []
 
-        log_info("{} files found".format(len(index)))
+        log_debug("{} files found".format(len(index)))
 
         for path, item in index.items():
-            log_info(str(item))
+            log_debug(str(item))
             break
 
         entry = {
@@ -43,14 +39,14 @@ class Backup:
         sources = self.videodb.get_video_source_types()
 
         if not sources:
-            log_info("No video sources found")
+            log_debug("No video sources found")
             return False
 
         self.save_json("backup-path.json", {
             "sources": sources
         })
 
-        log_info(f"Backup paths saved: {len(sources)}")
+        log_debug(f"Backup paths saved: {len(sources)}")
 
         return True
 
@@ -153,7 +149,7 @@ class Backup:
             "movies": backup
         })
 
-        log_info(f"Movies backed up: {len(backup)}")
+        log_debug(f"Movies backed up: {len(backup)}")
 
         return True
     
@@ -173,7 +169,7 @@ class Backup:
             "musicvideos": backup
         })
 
-        log_info(f"Music videos backed up: {len(backup)}")
+        log_debug(f"Music videos backed up: {len(backup)}")
 
         return True
 
@@ -193,7 +189,7 @@ class Backup:
             "episodes": backup
         })
 
-        log_info(f"Episodes backed up: {len(backup)}")
+        log_debug(f"Episodes backed up: {len(backup)}")
 
         return True
 
@@ -204,7 +200,7 @@ class Backup:
         sources = self.videodb.get_video_source_types()
 
         if not sources:
-            log_info("No video sources found")
+            log_debug("No video sources found")
             return False
 
         unknown_sources = [
@@ -215,14 +211,14 @@ class Backup:
         blacklist = self.videodb.get_blacklisted_video_sources()
 
         if not unknown_sources:
-            log_info("No unknown video sources found for backup")
+            log_debug("No unknown video sources found for backup")
             self.save_json("videos.json", {"videos": []})
             return True
 
         database_entries = self.videodb.get_unknown_video_database_entries()
 
         if not database_entries:
-            log_info("No unknown video entries found in Kodi database")
+            log_debug("No unknown video entries found in Kodi database")
             self.save_json("videos.json", {"videos": []})
             return True
 
@@ -230,14 +226,14 @@ class Backup:
             source_path = normalize(source.get("path") or "")
 
             if not self.videodb.is_source_enabled(source):
-                log_info(f"Skipping disabled source: {source_path}")
+                log_debug(f"Skipping disabled source: {source_path}")
                 continue
 
             if source_path in blacklist:
-                log_info(f"Skipping blacklisted source: {source_path}")
+                log_debug(f"Skipping blacklisted source: {source_path}")
                 continue
 
-            log_info(f"Backing up videos from: {source_path}")
+            log_debug(f"Backing up videos from: {source_path}")
 
             for video in database_entries:
                 file_path = normalize(video.get("file") or "")
@@ -260,7 +256,7 @@ class Backup:
             "videos": backup
         })
 
-        log_info(f"Videos backed up: {len(backup)}")
+        log_debug(f"Videos backed up: {len(backup)}")
 
         return True
 
@@ -301,7 +297,7 @@ class Backup:
                 )
                 file.write(text)
 
-            log_info(f"Saved '{filename}' to {today}")
+            log_debug(f"Saved '{filename}' to {today}")
             
             return True
 
@@ -316,9 +312,9 @@ class Backup:
         """
         try:
             if self.backup_manager.should_run_daily_cleanup():
-                log_info("Running daily backup cleanup...")
+                log_debug("Running daily backup cleanup...")
                 self.backup_manager.cleanup_old_daily_folders()
             else:
-                log_info("Daily cleanup already performed today")
+                log_debug("Daily cleanup already performed today")
         except Exception as e:
             log_error(f"Daily cleanup error: {e}")

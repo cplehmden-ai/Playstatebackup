@@ -53,3 +53,63 @@ msgstr ""
 msgctxt "#30026"
 msgid "Backup interval (minutes)"
 msgstr ""
+
+msgctxt "#30030"
+msgid "Start complete backup"
+msgstr ""
+
+msgctxt "#30031"
+msgid "Start partial backup"
+msgstr ""
+
+msgctxt "#30032"
+msgid "Start restore"
+msgstr ""
+
+msgctxt "#30033"
+msgid "Perform path mapping"
+msgstr ""
+
+msgctxt "#30034"
+msgid "PlayState Backup"
+msgstr ""
+
+msgctxt "#30035"
+msgid "Movies"
+msgstr ""
+
+msgctxt "#30036"
+msgid "TV shows"
+msgstr ""
+
+msgctxt "#30037"
+msgid "Music videos"
+msgstr ""
+
+msgctxt "#30038"
+msgid "Uncategorized videos"
+msgstr ""
+
+msgctxt "#30039"
+msgid "This feature is not available yet."
+msgstr ""
+
+msgctxt "#30040"
+msgid "No backup sets found."
+msgstr ""
+
+msgctxt "#30041"
+msgid "Select backup set"
+msgstr ""
+
+msgctxt "#30042"
+msgid "No unknown video sources were found.\n\nAll sources are enabled by default."
+msgstr ""
+
+msgctxt "#30043"
+msgid "Unknown source"
+msgstr ""
+
+msgctxt "#30044"
+msgid "Exclude unknown video sources\nOnly sources without a known content type are listed.\nAll sources are enabled by default."
+msgstr ""
