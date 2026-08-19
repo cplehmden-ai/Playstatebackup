@@ -280,31 +280,30 @@ class VideoDB:
 
         return index
 
-    def wait_for_directory(self, directory):
+    def wait_for_directory(self, directory, timeout=30):
+        """
+        Blocks until every file in `directory` has a 'dateadded' value, which is the
+        reliable indicator that Kodi has finished scanning it into the database.
+        Returns False if the timeout is reached without all files being indexed.
+        """
+        poll_interval = 0.5
+        elapsed = 0.0
 
-        while True:
+        while elapsed < timeout:
 
             files = self.get_directory_index(directory)
 
-            all_ready = True
-
-            ready = 0
-
-            for item in files.values():
-
-                if item.get("dateadded"):
-                    ready += 1
-
-                if not item.get("dateadded"):
-                    all_ready = False
-                    break
-
-            if all_ready:
+            if files and all(item.get("dateadded") for item in files.values()):
                 # extra milliseconds to ensure Kodi has finished
-                # all pending database updates.             
+                # all pending database updates.
                 xbmc.sleep(100)
                 return True
-            
+
+            xbmc.sleep(int(poll_interval * 1000))
+            elapsed += poll_interval
+
+        log_error(f"Timed out waiting for Kodi to index directory: {directory}")
+        return False
 
     def open_directory(self, directory):
 
@@ -313,7 +312,7 @@ class VideoDB:
         xbmc.executebuiltin(command)
 
         xbmc.sleep(500)
-            
+
     def get_subdirectories(self, directory):
 
 #        rpc = JsonRPC()

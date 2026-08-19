@@ -23,6 +23,10 @@ class BackupManager:
             base = base + "/" + part.lstrip("/").rstrip("/")
         return base
 
+    def _dir_exists(self, path):
+        """xbmcvfs.exists() requires a trailing slash to reliably detect folders."""
+        return xbmcvfs.exists(path.rstrip("/") + "/")
+
     def _get_base_backup_folder(self):
         """Get the base backup folder, create default if not set"""
         backup_folder = self.addon.getSetting("backup_folder")
@@ -86,16 +90,19 @@ class BackupManager:
         """
         try:
             folders = []
-            if not xbmcvfs.exists(self.backup_folder):
+            if not self._dir_exists(self.backup_folder):
                 return folders
 
-            entries = xbmcvfs.listdir(self.backup_folder)
+            entries = xbmcvfs.listdir(self.backup_folder.rstrip("/") + "/")
+            if not entries:
+                return folders
+
             if isinstance(entries, tuple):
                 daily_folders, _ = entries
             else:
                 daily_folders = entries
 
-            for folder_name in daily_folders:
+            for folder_name in daily_folders or []:
                 # Validate YYYY-MM-DD format
                 if self._is_valid_date_folder(folder_name):
                     folder_path = self._join_path(self.backup_folder, folder_name)
@@ -156,11 +163,11 @@ class BackupManager:
     def _delete_folder_recursively(self, folder_path):
         """Delete a folder and all its contents"""
         try:
-            if not xbmcvfs.exists(folder_path):
+            if not self._dir_exists(folder_path):
                 return True
 
             # Delete all files in the folder first
-            entries = xbmcvfs.listdir(folder_path)
+            entries = xbmcvfs.listdir(folder_path.rstrip("/") + "/")
             if isinstance(entries, tuple):
                 subfolders, files = entries
             else:
@@ -196,11 +203,11 @@ class BackupManager:
         folder_path = self.get_backup_folder_for_date(date)
         
         try:
-            if not xbmcvfs.exists(folder_path):
+            if not self._dir_exists(folder_path):
                 return True
             
             # If folder exists but is empty, it's the first backup
-            entries = xbmcvfs.listdir(folder_path)
+            entries = xbmcvfs.listdir(folder_path.rstrip("/") + "/")
             if isinstance(entries, tuple):
                 subfolders, files = entries
             else:

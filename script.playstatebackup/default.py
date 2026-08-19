@@ -6,6 +6,7 @@ from lib.constants import ADDON
 from lib.videodb import VideoDB
 from lib.jsonrpc import JsonRPC
 from lib.logger import log_debug
+from lib.restore import Restore
 from lib.utils import normalize
 
 
@@ -16,6 +17,16 @@ BACKUP_TYPES = (
     (30038, "backup_videos"),
 )
 
+# A video only ends up in the Kodi database once it has a playcount, resume point
+# or has been opened in the GUI - so only videos already tracked by Kodi are backed
+# up or restored here; no folder scan is triggered.
+RESTORE_TYPES = (
+    (30035, "restore_movies"),
+    (30036, "restore_episodes"),
+    (30037, "restore_musicvideos"),
+    (30038, "restore_videos"),
+)
+
 
 def run_complete_backup(backup):
     """Back up paths and every supported video type."""
@@ -24,19 +35,19 @@ def run_complete_backup(backup):
         getattr(backup, method_name)()
 
 
-def select_backup_types(title):
-    """Return the backup methods chosen by the user, or None on cancellation."""
-    labels = [ADDON.getLocalizedString(label_id) for label_id, _ in BACKUP_TYPES]
+def select_backup_types(title, types=BACKUP_TYPES):
+    """Return the backup/restore methods chosen by the user, or None on cancellation."""
+    labels = [ADDON.getLocalizedString(label_id) for label_id, _ in types]
     selected = xbmcgui.Dialog().multiselect(
         title,
         labels,
-        preselect=list(range(len(BACKUP_TYPES))),
+        preselect=list(range(len(types))),
     )
 
     if selected is None:
         return None
 
-    return [BACKUP_TYPES[index][1] for index in selected]
+    return [types[index][1] for index in selected]
 
 
 def run_partial_backup(backup):
@@ -56,30 +67,84 @@ def show_unavailable_action():
     )
 
 
+def browse_for_backup_set(start_folder):
+    """Let the user browse to an arbitrary folder, e.g. a backup set from another device."""
+    folder_path = xbmcgui.Dialog().browseSingle(
+        0,
+        ADDON.getLocalizedString(30041),
+        "files",
+        "",
+        False,
+        False,
+        start_folder,
+    )
+
+    if not folder_path:
+        return None
+
+    folder_path = normalize(folder_path)
+    date_label = folder_path.rsplit("/", 1)[-1] or folder_path
+    return (date_label, folder_path)
+
+
+def select_backup_set():
+    """Let the user choose one of the daily backup sets found in the configured backup
+    folder, or browse to a different folder (e.g. one synced from another device)."""
+    manager = BackupManager()
+    backup_sets = manager.get_all_daily_folders()
+
+    labels = [date for date, _ in backup_sets]
+    labels.append(ADDON.getLocalizedString(30046))
+
+    selection = xbmcgui.Dialog().select(
+        ADDON.getLocalizedString(30041),
+        labels,
+        preselect=0,
+    )
+    if selection < 0:
+        return None
+
+    if selection < len(backup_sets):
+        return backup_sets[selection]
+
+    return browse_for_backup_set(manager.backup_folder)
+
+
 def handle_restore_action():
-    selected_methods = select_backup_types(ADDON.getLocalizedString(30032))
+    backup_set = select_backup_set()
+    if backup_set is None:
+        return
+
+    date_label, folder_path = backup_set
+
+    selected_methods = select_backup_types(ADDON.getLocalizedString(30032), RESTORE_TYPES)
     if selected_methods is None:
         return
 
-    backup_sets = BackupManager().get_all_daily_folders()
-    if not backup_sets:
-        xbmcgui.Dialog().ok(
-            ADDON.getLocalizedString(30034),
-            ADDON.getLocalizedString(30040),
-        )
-        return
-
-    labels = [date for date, _ in backup_sets]
-    selection = xbmcgui.Dialog().select(ADDON.getLocalizedString(30041), labels)
-    if selection < 0:
-        return
+    xbmcgui.Dialog().ok(
+        ADDON.getLocalizedString(30034),
+        ADDON.getLocalizedString(30047),
+    )
 
     log_debug(
         "Restore requested for backup set {} and types {}".format(
-            labels[selection], selected_methods
+            date_label, selected_methods
         )
     )
-    show_unavailable_action()
+
+    rpc = JsonRPC()
+    videodb = VideoDB(rpc)
+    restore = Restore(rpc, videodb)
+
+    total_restored = 0
+    for method_name in selected_methods:
+        total_restored += getattr(restore, method_name)(folder_path)
+
+    log_debug(f"Restore finished for {date_label}: {total_restored} entries restored")
+    xbmcgui.Dialog().notification(
+        ADDON.getLocalizedString(30034),
+        ADDON.getLocalizedString(30045).format(total_restored),
+    )
 
 
 def handle_backup_action(backup):

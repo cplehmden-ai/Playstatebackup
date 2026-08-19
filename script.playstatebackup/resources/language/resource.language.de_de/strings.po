@@ -113,3 +113,15 @@ msgstr "Unbekannte Quelle"
 msgctxt "#30044"
 msgid "Exclude unknown video sources\nOnly sources without a known content type are listed.\nAll sources are enabled by default."
 msgstr "Videoquellen ausschliessen. Es werden nur Quellen vom Inhaltstyp "Keine" aufgelistet."
+
+msgctxt "#30045"
+msgid "Restore completed: {0} entries restored."
+msgstr "Restore abgeschlossen: {0} Einträge wiederhergestellt."
+
+msgctxt "#30046"
+msgid "Browse..."
+msgstr "Durchsuchen..."
+
+msgctxt "#30047"
+msgid "Restoring requires the media sources (e.g. external drives or network shares) to be online and reachable, since entries without a unique id are matched by their file path."
+msgstr "Für das Restore müssen die Medienquellen (z. B. externe Festplatte oder Netzwerkfreigabe) eingeschaltet und erreichbar sein, da Einträge ohne eindeutige ID über den Dateipfad zugeordnet werden."
