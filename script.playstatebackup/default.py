@@ -1,11 +1,12 @@
 import sys
 import xbmcgui
+from lib import pathmap
 from lib.backup import Backup
 from lib.backup_manager import BackupManager
 from lib.constants import ADDON
 from lib.videodb import VideoDB
 from lib.jsonrpc import JsonRPC
-from lib.logger import log_debug
+from lib.logger import log_debug, log_info
 from lib.restore import Restore
 from lib.utils import normalize
 
@@ -30,9 +31,11 @@ RESTORE_TYPES = (
 
 def run_complete_backup(backup):
     """Back up paths and every supported video type."""
+    log_info("Backup started (complete)")
     backup.backup_paths()
     for _, method_name in BACKUP_TYPES:
         getattr(backup, method_name)()
+    log_info("Backup finished (complete)")
 
 
 def select_backup_types(title, types=BACKUP_TYPES):
@@ -55,9 +58,11 @@ def run_partial_backup(backup):
     if selected_methods is None:
         return
 
+    log_info(f"Backup started (partial): {selected_methods}")
     backup.backup_paths()
     for method_name in selected_methods:
         getattr(backup, method_name)()
+    log_info("Backup finished (partial)")
 
 
 def show_unavailable_action():
@@ -65,6 +70,99 @@ def show_unavailable_action():
         ADDON.getLocalizedString(30034),
         ADDON.getLocalizedString(30039),
     )
+
+
+def select_new_path_for_source(source):
+    label = source.get("label") or source.get("path")
+
+    # Always start at the root of the browser (no preset folder), otherwise Kodi
+    # tries to jump straight into the (possibly no longer existing) old/current
+    # path and never shows the root-level shares, so network sources like SMB
+    # can't be reached at all.
+    new_path = xbmcgui.Dialog().browseSingle(
+        0,
+        ADDON.getLocalizedString(30053).format(label),
+        "files",
+        "",
+        False,
+        True,
+        "",
+    )
+
+    if not new_path or new_path.lower().startswith("stack://"):
+        return None
+
+    return normalize(new_path)
+
+
+def build_path_mapping_options(sources, mapping):
+    options = []
+    for source in sources:
+        path = source.get("path")
+        label = source.get("label") or path
+        mapped_to = mapping.get(path)
+        target = mapped_to if mapped_to else ADDON.getLocalizedString(30050)
+        options.append(f"{label} ({path}) -> {target}")
+
+    options.append(ADDON.getLocalizedString(30051))
+    options.append(ADDON.getLocalizedString(30052))
+    return options
+
+
+def handle_path_mapping_action():
+    backup_set = select_backup_set()
+    if backup_set is None:
+        return
+
+    date_label, folder_path = backup_set
+
+    sources = pathmap.load_enabled_sources(folder_path)
+    if not sources:
+        xbmcgui.Dialog().ok(
+            ADDON.getLocalizedString(30034),
+            ADDON.getLocalizedString(30049),
+        )
+        return
+
+    mapping = pathmap.load_mapping(folder_path)
+
+    while True:
+        options = build_path_mapping_options(sources, mapping)
+        save_index = len(sources)
+        save_and_restore_index = len(sources) + 1
+
+        selection = xbmcgui.Dialog().select(
+            ADDON.getLocalizedString(30033),
+            options,
+        )
+
+        if selection < 0:
+            return
+
+        if selection < len(sources):
+            source = sources[selection]
+            new_path = select_new_path_for_source(source)
+            if new_path:
+                mapping[source.get("path")] = new_path
+            continue
+
+        if selection == save_index:
+            pathmap.save_mapping(folder_path, mapping)
+            xbmcgui.Dialog().notification(
+                ADDON.getLocalizedString(30034),
+                ADDON.getLocalizedString(30054),
+            )
+            continue
+
+        if selection == save_and_restore_index:
+            pathmap.save_mapping(folder_path, mapping)
+
+            selected_methods = select_backup_types(ADDON.getLocalizedString(30032), RESTORE_TYPES)
+            if selected_methods is None:
+                continue
+
+            run_restore(date_label, folder_path, selected_methods, mapping)
+            return
 
 
 def browse_for_backup_set(start_folder):
@@ -110,6 +208,36 @@ def select_backup_set():
     return browse_for_backup_set(manager.backup_folder)
 
 
+def run_restore(date_label, folder_path, selected_methods, path_mapping=None):
+    xbmcgui.Dialog().ok(
+        ADDON.getLocalizedString(30034),
+        ADDON.getLocalizedString(30047),
+    )
+
+    log_info(
+        "Restore started for backup set {} and types {}".format(
+            date_label, selected_methods
+        )
+    )
+
+    rpc = JsonRPC()
+    videodb = VideoDB(rpc)
+    restore = Restore(rpc, videodb)
+
+    total_restored = 0
+    for method_name in selected_methods:
+        total_restored += getattr(restore, method_name)(
+            folder_path,
+            path_mapping=path_mapping,
+        )
+
+    log_info(f"Restore finished for {date_label}: {total_restored} entries restored")
+    xbmcgui.Dialog().notification(
+        ADDON.getLocalizedString(30034),
+        ADDON.getLocalizedString(30045).format(total_restored),
+    )
+
+
 def handle_restore_action():
     backup_set = select_backup_set()
     if backup_set is None:
@@ -121,30 +249,7 @@ def handle_restore_action():
     if selected_methods is None:
         return
 
-    xbmcgui.Dialog().ok(
-        ADDON.getLocalizedString(30034),
-        ADDON.getLocalizedString(30047),
-    )
-
-    log_debug(
-        "Restore requested for backup set {} and types {}".format(
-            date_label, selected_methods
-        )
-    )
-
-    rpc = JsonRPC()
-    videodb = VideoDB(rpc)
-    restore = Restore(rpc, videodb)
-
-    total_restored = 0
-    for method_name in selected_methods:
-        total_restored += getattr(restore, method_name)(folder_path)
-
-    log_debug(f"Restore finished for {date_label}: {total_restored} entries restored")
-    xbmcgui.Dialog().notification(
-        ADDON.getLocalizedString(30034),
-        ADDON.getLocalizedString(30045).format(total_restored),
-    )
+    run_restore(date_label, folder_path, selected_methods)
 
 
 def handle_backup_action(backup):
@@ -157,17 +262,13 @@ def handle_backup_action(backup):
     selection = xbmcgui.Dialog().select(ADDON.getLocalizedString(30034), actions)
 
     if selection == 0:
-        log_debug("Starting complete backup")
         run_complete_backup(backup)
-        log_debug("Complete backup finished")
     elif selection == 1:
-        log_debug("Starting partial backup")
         run_partial_backup(backup)
-        log_debug("Partial backup finished")
     elif selection == 2:
         handle_restore_action()
     elif selection == 3:
-        show_unavailable_action()
+        handle_path_mapping_action()
 
 
 def handle_select_unknown_video_sources():

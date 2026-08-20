@@ -1,172 +1,61 @@
-# script.playstatebackup - Addon Dokumentation
+# PlayState Backup for Kodi
 
-## 🎯 Überblick
+PlayState Backup stores the playback status of your videos outside Kodi's video database. The saved states can be restored whenever needed.
 
-PlayState Backup sichert die **Gesehen-Zustände** und **Resume-Zeitpunkte** aller Videos extern ab und stellt sie bei Bedarf wieder her.
+This is especially useful when:
 
-## ✅ Installation & Verwendung
+- rebuilding Kodi's video database
+- moving to a different device or system
+- recovering from database problems
+- moving a media collection to another drive or server
 
-### Das Addon funktioniert sofort nach Installation - keine weitere Konfiguration notwendig!
+## Features
 
-Das Addon unterstützt zwei Datenbanktypen:
+- Backup and restore for movies
+- Backup and restore for TV shows and episodes
+- Backup and restore for music videos
+- Backup and restore for other, uncategorized videos
+- Storage of watched status, playcount, and resume position
+- Full or partial backups
+- Automatic backups at Kodi startup or at a configurable interval
+- Daily backup sets with configurable retention
+- Exclusion of individual unknown video sources from backups
+- Support for local and centralized Kodi video databases
+- Multilingual user interface
 
-1. **SQLite (Standard)** - Funktioniert direkt in Kodi
-   - Die lokale Videodatenbank wird automatisch erkannt
-   - Keine Konfiguration notwendig
+## Path Mapping
 
-2. **MySQL (Optional)** - Für zentrale Kodi-Datenbanken
-   - Konfigurieren Sie `advancedsettings.xml` mit MySQL-Zugangsdaten
-   - Das Addon verbindet sich automatisch
+When media paths change after a migration, the old sources in a backup set can be mapped to their new locations once.
 
-## 📦 Struktur
+Example:
 
-```
-addon.xml                 # Addon-Metadaten
-default.py               # Hauptskript
-service.py               # Service/Daemon
-lib/
-  ├── backup.py          # Backup-Logik
-  ├── restore.py         # Restore-Logik
-  ├── videodb.py         # Datenbankverbindung (SQLite + MySQL)
-  ├── database.py        # DB-Utilities
-  ├── jsonrpc.py         # Kodi JSON-RPC API
-  ├── logger.py          # Logging
-  ├── mysql/             # MySQL Connector (bundled)
-  │   └── connector/     # Pure Python MySQL-Client
-  └── ...
-resources/
-  ├── settings.xml       # Addon-Einstellungen
-  └── language/          # Lokalisierung
+```text
+D:\Videos\     ->     smb://server/Movies/
 ```
 
-## 🔧 MySQL-Konfiguration (Optional)
+The mapping also applies to files in subfolders. It is only needed when restoring after a media path change. A regular restore uses the paths stored in the backup as usual.
 
-Wenn Sie MySQL verwenden, konfigurieren Sie `advancedsettings.xml`:
+## Installation
 
-```xml
-<advancedsettings>
-  <videodatabase>
-    <type>mysql</type>
-    <host>192.168.1.100</host>
-    <port>3306</port>
-    <user>kodi_user</user>
-    <pass>password</pass>
-    <name>MyVideos</name>
-  </videodatabase>
-</advancedsettings>
-```
+The addon is available through the [Kodinerds Repository](https://repo.kodinerds.net/index.php).
 
-**Hinweis:** Der Datenbankname wird automatisch zu `myvideos{version}` (z.B. `myvideos131` für Kodi 21).
+It can also be installed like any other Kodi addon, for example from a ZIP file.
 
-## 🐛 Entwicklung & Testing
+After installation, choose a backup location in the addon settings. The backup and restore functions are then available from the addon menu.
 
-Für Entwickler stehen folgende Tools zur Verfügung:
+## Backup Storage
 
-### Test der Datenbankverbindung
-```bash
-python test_database.py
-```
-Überprüft:
-- ✓ Module importierbar
-- ✓ VideoDB-Klasse ladbar
-- ✓ SQLite/MySQL Erkennung
-- ✓ Datenbankverbindung
+Each backup set is stored in its own daily folder. The storage location can be local or on a network share accessible to Kodi.
 
-### (Optional) MySQL-Connector aktualisieren
-```bash
-python setup_mysql_connector.py
-```
-Der Connector ist bereits enthalten. Dieses Skript ist nur für Updates auf neuere Versionen nötig.
+Backup files contain only the information required for restoration. The media files themselves are not copied.
 
-## 📝 Verwendung im Code
+## Notes
 
-```python
-from lib.videodb import VideoDB
-from lib.jsonrpc import JsonRPC
+- Media sources should be online and reachable during a restore.
+- A restore updates playback status but does not scan new media into Kodi's library.
+- Matching uncategorized videos relies heavily on their file paths.
+- Create a current backup before making major changes to Kodi's video database.
 
-# JSON-RPC Verbindung zu Kodi
-rpc = JsonRPC()
-
-# VideoDB mit automatischer SQLite/MySQL Erkennung
-videodb = VideoDB(rpc)
-
-# Datenbankverbindung aufbauen
-conn = videodb.get_database_connection()
-
-if conn:
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM version")
-    result = cursor.fetchall()
-    cursor.close()
-    conn.close()
-```
-
-## 🔗 MySQL-Datenbanknamen
-
-Das Addon nutzt automatisch die korrekte Datenbank basierend auf der Kodi-Version:
-
-| Kodi Version | Datenbankname |
-|---|---|
-| Kodi 20 | myvideos120 |
-| Kodi 21 | myvideos131 |
-| Kodi 22 | myvideos_zukünftig |
-
-Die Versionsnummer wird aus der lokalen SQLite-Datenbank ausgelesen.
-
-## ⚙️ Funktionsweise
-
-### Backup-Prozess
-1. Liest alle Filme, Serien und Musikvideos aus der Videobibliothek (via JSON-RPC)
-2. Ermittelt Play-State (gesehen/ungegesen) und Resume-Position aller Filme, Serien und Musikvideos (via JSON-RPC)
-3. Ermittelt Play-State (gesehen/ungegesen) und Resume-Position aller "sonstigen" Videos (via Datenbank, da es keine RPC Calls dafür gibt)
-4. Speichert alles in JSON-Dateien
-5. Kann manuell oder automatisch gestartet werden
-
-### Ausschluss einzelner "Sonstige"-Quellen
-Für Quellen mit unbekanntem Inhaltstyp (`unknown`) gibt es in den Addon-Einstellungen eine Aktion zum Auswählen und Deaktivieren einzelner Quellen. Standardmäßig sind alle Quellen aktiviert. Wenn eine Quelle ausgeschlossen wird, wird sie beim Backup übersprungen, obwohl sie weiterhin in Kodi als Videoquelle vorhanden ist.
-
-### Restore-Prozess
-1. Lädt gespeicherte JSON-Dateien
-2. Verbindet sich zur Videodatenbank über JSON-RPC
-3. Schreibt Play-State und Resume-Position aller Videos zurück
-
-### Path-Remap-Prozess
-
-Da es sein kann, das sich die Pfade zu den Medienquellen ändern und es bei sonstigen Videos nie, bei Musikvideos selten, bei Filmen und Serien aber meistens externe eindeutige ID gibt (Beispiel IMDB-ID) hat das Addon eine Option, um die Pfade aus dem Backup an die neuen Pfade der Medienquellen anzupassen, damit man auch nach einem Server- Umzug (o.Ä.) sein vollständiges Backup wieder zurück schreiben kann. Bei Filmen und Serien wird der Fallback zum Absichern über den Dateipfad wohl nur sehr selten mal notwendig sein, bei Musikvideos schon häufiger mal. "Sonstige" Videos kann man hingegen nur über den Dateipfad absichern. 
-
-
-## 🚨 Troubleshooting
-
-### SQLite/MySQL automatisch erkannt?
-```bash
-python test_database.py
-```
-
-### MySQL: "Server nicht erreichbar"
-- Überprüfen Sie `advancedsettings.xml` (Host, Port, User, Pass)
-- Stellen Sie sicher, dass der MySQL-Server läuft
-- Überprüfen Sie Firewall-Einstellungen
-
-### MySQL: "Datenbank nicht gefunden"
-Das Addon sucht `myvideos{version}`, z.B. `myvideos131`.
-Überprüfen Sie:
-```sql
-SHOW DATABASES LIKE 'myvideos%';
-```
-
-## 📚 Weitere Ressourcen
-
-- [Kodi MySQL Setup](https://kodi.wiki/view/MySQL/Setting_up_MySQL)
-- [MySQL Connector/Python Docs](https://dev.mysql.com/doc/connector-python/en/)
-- [Kodi JSON-RPC API](https://kodi.wiki/view/JSON-RPC_API)
-
-## � Changelog
-
-### Unreleased
-- Neue Option in den Addon-Einstellungen: Einzelne unbekannte Videoquellen vom Backup ausschließen
-- Standardmäßig sind alle Videoquellen aktiviert
-- Nur Quellen mit unbekanntem Inhaltstyp werden zur Auswahl angeboten
-
-## �📄 Lizenz
+## License
 
 GPL-3.0

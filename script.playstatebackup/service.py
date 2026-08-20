@@ -4,7 +4,7 @@ import time
 from lib.backup import Backup
 from lib.videodb import VideoDB
 from lib.jsonrpc import JsonRPC
-from lib.logger import log_debug, log_error
+from lib.logger import log_debug, log_error, log_info
 
 
 class AutoBackupService:
@@ -77,7 +77,7 @@ class AutoBackupService:
     def perform_backup(self):
         """Execute backup operation"""
         try:
-            log_debug("Starting automatic backup...")
+            log_info("Backup started (automatic)")
             
             rpc = JsonRPC()
             videodb = VideoDB(rpc)
@@ -93,7 +93,7 @@ class AutoBackupService:
             }
             
             successful = sum(1 for v in results.values() if v)
-            log_debug(f"Automatic backup completed: {successful}/{len(results)} operations successful")
+            log_info(f"Backup finished (automatic): {successful}/{len(results)} operations successful")
             
             return True
         except Exception as e:

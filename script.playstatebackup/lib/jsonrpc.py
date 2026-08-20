@@ -9,7 +9,7 @@ class JsonRPC:
     def __init__(self):
         log_debug("JsonRPC initialized")
 
-    def call(self, method, params=None):
+    def call(self, method, params=None, log_rpc_errors=True):
         request = {
             "jsonrpc": "2.0",
             "id": RPC_ID,
@@ -31,7 +31,7 @@ class JsonRPC:
             log_error(response_json)
             return None
 
-        if "error" in response:
+        if "error" in response and log_rpc_errors:
             log_error(str(response["error"]))
 
         log_debug(str(response))

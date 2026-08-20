@@ -583,6 +583,80 @@ class VideoDB:
             except Exception:
                 pass
 
+    def set_unknown_video_playstate(self, file_path, entry):
+        """Update a tracked non-library video directly in Kodi's video database."""
+        conn = self.get_database_connection()
+        if conn is None:
+            return False
+
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT f.idFile, p.strPath, f.strFilename "
+                "FROM files AS f JOIN path AS p ON p.idPath = f.idPath "
+                "WHERE f.strFilename IS NOT NULL"
+            )
+            current_entry = None
+            for item in cursor.fetchall():
+                path_base = item[1] or ""
+                file_name = item[2] or ""
+                if path_base and not path_base.endswith(("/", "\\")):
+                    path_base += "/"
+                if normalize(f"{path_base}{file_name}") == normalize(file_path):
+                    current_entry = item
+                    break
+
+            if not current_entry:
+                return False
+
+            placeholder = "?" if isinstance(conn, sqlite3.Connection) else "%s"
+            cursor.execute(
+                "UPDATE files SET playCount = {0}, lastPlayed = {0} "
+                "WHERE idFile = {0}".format(placeholder),
+                (
+                    entry.get("playcount", 0),
+                    entry.get("lastplayed"),
+                    current_entry[0],
+                ),
+            )
+
+            resume = entry.get("resume") or {}
+            resume_values = (
+                resume.get("position", 0),
+                resume.get("total", 0),
+                current_entry[0],
+            )
+            cursor.execute(
+                "UPDATE bookmark SET timeInSeconds = {0}, "
+                "totalTimeInSeconds = {0} WHERE idFile = {0}".format(placeholder),
+                resume_values,
+            )
+            if cursor.rowcount == 0 and (resume.get("position", 0) or resume.get("total", 0)):
+                cursor.execute(
+                    "INSERT INTO bookmark (idFile, timeInSeconds, totalTimeInSeconds) "
+                    "VALUES ({0}, {0}, {0})".format(placeholder),
+                    (
+                        current_entry[0],
+                        resume.get("position", 0),
+                        resume.get("total", 0),
+                    ),
+                )
+
+            conn.commit()
+            return True
+        except Exception as e:
+            log_error(f"Could not update unknown video playstate: {e}")
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            return False
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
     def is_source_enabled(self, source):
         if isinstance(source, dict):
             path = source.get("path")

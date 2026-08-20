@@ -125,3 +125,27 @@ msgstr ""
 msgctxt "#30047"
 msgid "Restoring requires the media sources (e.g. external drives or network shares) to be online and reachable, since entries without a unique id are matched by their file path."
 msgstr ""
+
+msgctxt "#30049"
+msgid "No enabled video sources were found in this backup set."
+msgstr ""
+
+msgctxt "#30050"
+msgid "Not mapped"
+msgstr ""
+
+msgctxt "#30051"
+msgid "Save mapping"
+msgstr ""
+
+msgctxt "#30052"
+msgid "Save mapping and start restore"
+msgstr ""
+
+msgctxt "#30053"
+msgid "Select new path for: {0}"
+msgstr ""
+
+msgctxt "#30054"
+msgid "Path mapping saved."
+msgstr ""

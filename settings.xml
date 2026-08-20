@@ -1,0 +1,10 @@
+<settings version="2">
+    <setting id="backup_folder">smb://peter:master@192.168.1.20/D/Kodi/Kodi-Files/Backup/Playstate/Windows/</setting>
+    <setting id="backup_retention_days" default="true">7</setting>
+    <setting id="select_unknown_video_sources" default="true" />
+    <setting id="disabled_video_sources">[&quot;smb://192.168.1.20/D/Downloads&quot;, &quot;smb://192.168.1.20/D/TV-Aufnahmen&quot;]</setting>
+    <setting id="blacklisted_video_sources" default="true">[]</setting>
+    <setting id="backup_auto_mode">2</setting>
+    <setting id="backup_auto_startup_delay">60</setting>
+    <setting id="backup_auto_interval">60</setting>
+</settings>

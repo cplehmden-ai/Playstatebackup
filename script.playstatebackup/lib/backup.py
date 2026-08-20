@@ -267,10 +267,8 @@ class Backup:
         so at most 2 versions per backup type are kept per day.
         Handles daily cleanup of old backups if this is the first backup of the day.
         """
-        # Perform daily cleanup if this is the first backup of the day
-        if not self._daily_cleanup_done:
-            self._perform_daily_cleanup()
-            self._daily_cleanup_done = True
+        # Determine before creating today's folder, otherwise it never looks "new"
+        run_cleanup = not self._daily_cleanup_done and self.backup_manager.should_run_daily_cleanup()
 
         # Get today's backup folder
         today = datetime.now().strftime("%Y-%m-%d")
@@ -279,6 +277,11 @@ class Backup:
         if not backup_folder:
             log_error("Failed to get or create daily backup folder")
             return False
+
+        # Run cleanup only after today's folder exists, so it counts toward retention
+        if run_cleanup:
+            self._perform_daily_cleanup()
+        self._daily_cleanup_done = True
 
         base_name, ext = filename.rsplit(".", 1)
         full_filename = backup_folder.rstrip("/") + "/" + filename
@@ -311,10 +314,7 @@ class Backup:
         Should be called once per day on the first backup
         """
         try:
-            if self.backup_manager.should_run_daily_cleanup():
-                log_debug("Running daily backup cleanup...")
-                self.backup_manager.cleanup_old_daily_folders()
-            else:
-                log_debug("Daily cleanup already performed today")
+            log_debug("Running daily backup cleanup...")
+            self.backup_manager.cleanup_old_daily_folders()
         except Exception as e:
             log_error(f"Daily cleanup error: {e}")

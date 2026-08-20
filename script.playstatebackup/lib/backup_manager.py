@@ -93,7 +93,12 @@ class BackupManager:
             if not self._dir_exists(self.backup_folder):
                 return folders
 
-            entries = xbmcvfs.listdir(self.backup_folder.rstrip("/") + "/")
+            listdir = getattr(xbmcvfs, "listdir", None)
+            if not callable(listdir):
+                log_debug("Kodi VFS listdir is unavailable")
+                return folders
+
+            entries = listdir(self.backup_folder.rstrip("/") + "/")
             if not entries:
                 return folders
 
@@ -127,17 +132,19 @@ class BackupManager:
 
     def cleanup_old_daily_folders(self):
         """
-        Remove daily folders older than retention_days
-        Should be called once per day (typically on first backup of the day)
+        Keep only the retention_days most recent daily folders and remove the rest.
+        Count-based (not calendar-date-based) so gaps - e.g. Kodi not started for
+        several days - don't cause backups to be deleted prematurely.
+        Call this only after today's folder has been created, so it is counted too.
         """
         try:
             daily_folders = self.get_all_daily_folders()
             if len(daily_folders) <= self.retention_days:
-                log_debug(f"Retention check: {len(daily_folders)} folders <= {self.retention_days} days")
+                log_debug(f"Retention check: {len(daily_folders)} folders <= {self.retention_days} to keep")
                 return True
 
             folders_to_delete = daily_folders[self.retention_days:]
-            
+
             for date_str, folder_path in folders_to_delete:
                 if self._delete_folder_recursively(folder_path):
                     log_debug(f"Deleted old backup folder: {date_str}")
