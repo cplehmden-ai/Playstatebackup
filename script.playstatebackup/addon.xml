@@ -17,6 +17,7 @@
         </description>
         <platform>all</platform>
 		<license>GPL-3.0</license>
+		<forum>https://www.kodinerds.net/thread/81201-release-playstate-addon-zum-externen-absichern-der-play-counts-und-resume-states/</forum>
 		<assets>
 			<icon>resources/media/icon.png</icon>
 			<fanart>resources/media/fanart.jpg</fanart>
