@@ -55,6 +55,7 @@ Backup files contain only the information required for restoration. The media fi
 - A restore updates playback status but does not scan new media into Kodi's library.
 - Matching uncategorized videos relies heavily on their file paths.
 - Create a current backup before making major changes to Kodi's video database.
+- This addon uses parts of [pymysql](https://github.com/PyMySQL/PyMySQL)). 
 
 ## License
 
