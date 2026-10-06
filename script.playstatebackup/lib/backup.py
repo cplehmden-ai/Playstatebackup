@@ -1,17 +1,55 @@
 import xbmcvfs
 import json
+import gc
+import ctypes
 from datetime import datetime
 from lib.logger import log_debug, log_error
 from lib.utils import normalize
 from lib.backup_manager import BackupManager
 
+
+def _get_malloc_trim():
+    """Return malloc_trim when exported by the process C runtime, otherwise None."""
+    try:
+        libc = ctypes.CDLL(None)
+        malloc_trim = getattr(libc, "malloc_trim", None)
+
+        if malloc_trim is None:
+            return None
+
+        malloc_trim.argtypes = [ctypes.c_size_t]
+        malloc_trim.restype = ctypes.c_int
+        return malloc_trim
+
+    except Exception:
+        return None
+
+
+_MALLOC_TRIM = _get_malloc_trim()
+
+
 class Backup:
 
     def __init__(self, rpc, videodb):
-            self.rpc = rpc
-            self.videodb = videodb
-            self.backup_manager = BackupManager()
-            self._daily_cleanup_done = False
+        self.rpc = rpc
+        self.videodb = videodb
+        self.backup_manager = BackupManager()
+        self._daily_cleanup_done = False
+
+
+    def release_memory(self):
+        """Release unreachable Python objects and trim the C heap when supported."""
+        collected = gc.collect()
+        trimmed = False
+
+        if _MALLOC_TRIM is not None:
+            try:
+                trimmed = bool(_MALLOC_TRIM(0))
+            except Exception:
+                # malloc_trim is optional. Python GC has already completed.
+                pass
+
+        log_debug(f"Memory cleanup: gc={collected}, malloc_trim={trimmed}")
 
     def backup_directory(self, directory):
 
@@ -26,11 +64,10 @@ class Backup:
             break
 
         entry = {
-                    "path": path,
-                }
+            "path": path,
+        }
 
         backup_data.append(entry)
-
 
         return backup_data
 
@@ -132,70 +169,83 @@ class Backup:
 
         return entry
 
-
     def backup_movies(self):
 
         movies = self.videodb.video_library_get_movies()
+        count = 0
 
-        backup = []
+        def entries():
+            nonlocal count
 
-        for movie in movies:
-            entry = self.create_movie_backup(movie)
+            for movie in movies:
+                entry = self.create_movie_backup(movie)
 
-            if entry:
-                backup.append(entry)
+                if entry is not None:
+                    count += 1
+                    yield entry
 
-        self.save_json("movies.json", {
-            "movies": backup
-        })
+        result = self.save_json_stream("movies.json", "movies", entries())
 
-        log_debug(f"Movies backed up: {len(backup)}")
+        # The API result can be large. Drop our reference as soon as possible.
+        del movies
+        self.release_memory()
 
-        return True
-    
+        if result:
+            log_debug(f"Movies backed up: {count}")
+
+        return result
+
     def backup_musicvideos(self):
 
         musicvideos = self.videodb.video_library_get_musicvideos()
+        count = 0
 
-        backup = []
+        def entries():
+            nonlocal count
 
-        for musicvideo in musicvideos:
-            entry = self.create_musicvideo_backup(musicvideo)
+            for musicvideo in musicvideos:
+                entry = self.create_musicvideo_backup(musicvideo)
 
-            if entry:
-                backup.append(entry)
+                if entry is not None:
+                    count += 1
+                    yield entry
 
-        self.save_json("musicvideos.json", {
-            "musicvideos": backup
-        })
+        result = self.save_json_stream("musicvideos.json", "musicvideos", entries())
 
-        log_debug(f"Music videos backed up: {len(backup)}")
+        del musicvideos
+        self.release_memory()
 
-        return True
+        if result:
+            log_debug(f"Music videos backed up: {count}")
+
+        return result
 
     def backup_episodes(self):
 
         episodes = self.videodb.video_library_get_episodes()
+        count = 0
 
-        backup = []
+        def entries():
+            nonlocal count
 
-        for episode in episodes:
-            entry = self.create_episode_backup(episode)
+            for episode in episodes:
+                entry = self.create_episode_backup(episode)
 
-            if entry:
-                backup.append(entry)
+                if entry is not None:
+                    count += 1
+                    yield entry
 
-        self.save_json("episodes.json", {
-            "episodes": backup
-        })
+        result = self.save_json_stream("episodes.json", "episodes", entries())
 
-        log_debug(f"Episodes backed up: {len(backup)}")
+        del episodes
+        self.release_memory()
 
-        return True
+        if result:
+            log_debug(f"Episodes backed up: {count}")
+
+        return result
 
     def backup_videos(self):
-
-        backup = []
 
         sources = self.videodb.get_video_source_types()
 
@@ -203,26 +253,14 @@ class Backup:
             log_debug("No video sources found")
             return False
 
-        unknown_sources = [
-            source for source in sources
-            if source.get("content") == "unknown"
-        ]
+        unknown_sources = []
 
         blacklist = self.videodb.get_blacklisted_video_sources()
 
-        if not unknown_sources:
-            log_debug("No unknown video sources found for backup")
-            self.save_json("videos.json", {"videos": []})
-            return True
+        for source in sources:
+            if source.get("content") != "unknown":
+                continue
 
-        database_entries = self.videodb.get_unknown_video_database_entries()
-
-        if not database_entries:
-            log_debug("No unknown video entries found in Kodi database")
-            self.save_json("videos.json", {"videos": []})
-            return True
-
-        for source in unknown_sources:
             source_path = normalize(source.get("path") or "")
 
             if not self.videodb.is_source_enabled(source):
@@ -233,63 +271,90 @@ class Backup:
                 log_debug(f"Skipping blacklisted source: {source_path}")
                 continue
 
-            log_debug(f"Backing up videos from: {source_path}")
+            unknown_sources.append(source_path.rstrip("/"))
 
+        if not unknown_sources:
+            log_debug("No enabled unknown video sources found for backup")
+            return self.save_json("videos.json", {"videos": []})
+
+        database_entries = self.videodb.get_unknown_video_database_entries()
+
+        log_debug(f"Backing up videos from {len(unknown_sources)} unknown source(s)")
+
+        def entries():
+            count = 0
+
+            # Process every database entry only once. The previous implementation
+            # iterated over the complete database once for every unknown source.
             for video in database_entries:
                 file_path = normalize(video.get("file") or "")
                 if not file_path:
                     continue
 
-                source_prefix = source_path.rstrip("/")
-                if file_path == source_prefix:
-                    entry = self.create_videos_backup(video)
-                    if entry is not None:
-                        backup.append(entry)
-                    continue
+                for source_prefix in unknown_sources:
+                    if file_path == source_prefix or file_path.startswith(source_prefix + "/"):
+                        entry = self.create_videos_backup(video)
 
-                if file_path.startswith(source_prefix + "/"):
-                    entry = self.create_videos_backup(video)
-                    if entry is not None:
-                        backup.append(entry)
+                        if entry is not None:
+                            count += 1
+                            yield entry
 
-        self.save_json("videos.json", {
-            "videos": backup
-        })
+                        break
 
-        log_debug(f"Videos backed up: {len(backup)}")
+            log_debug(f"Videos backed up: {count}")
 
-        return True
+        result = self.save_json_stream("videos.json", "videos", entries())
 
-    def save_json(self, filename, data):
+        # The database result may contain many thousands of entries.
+        del database_entries
+        self.release_memory()
+
+        return result
+
+    def _prepare_json_file(self, filename):
         """
-        Save backup data to a JSON file in the daily backup folder.
-        If the file already exists, it is rotated to "<name>_1.json" first,
-        so at most 2 versions per backup type are kept per day.
-        Handles daily cleanup of old backups if this is the first backup of the day.
+        Prepare the target JSON file and perform the daily cleanup/rotation.
+        Returns the full filename or None on error.
         """
-        # Determine before creating today's folder, otherwise it never looks "new"
-        run_cleanup = not self._daily_cleanup_done and self.backup_manager.should_run_daily_cleanup()
+        run_cleanup = (
+            not self._daily_cleanup_done
+            and self.backup_manager.should_run_daily_cleanup()
+        )
 
-        # Get today's backup folder
         today = datetime.now().strftime("%Y-%m-%d")
         backup_folder = self.backup_manager.ensure_backup_folder_for_date(today)
 
         if not backup_folder:
             log_error("Failed to get or create daily backup folder")
-            return False
+            return None
 
-        # Run cleanup only after today's folder exists, so it counts toward retention
         if run_cleanup:
             self._perform_daily_cleanup()
+
         self._daily_cleanup_done = True
 
         base_name, ext = filename.rsplit(".", 1)
         full_filename = backup_folder.rstrip("/") + "/" + filename
-        rotated_filename = backup_folder.rstrip("/") + "/" + f"{base_name}_1.{ext}"
+        rotated_filename = (
+            backup_folder.rstrip("/") + "/" + f"{base_name}_1.{ext}"
+        )
 
         if xbmcvfs.exists(full_filename):
-            xbmcvfs.delete(rotated_filename)  # no-op if it doesn't exist
+            xbmcvfs.delete(rotated_filename)
             xbmcvfs.rename(full_filename, rotated_filename)
+
+        return full_filename
+
+    def save_json(self, filename, data):
+        """
+        Save a complete JSON object to the daily backup folder.
+        Intended for small data such as backup-path.json and empty backups.
+        Large backup files should use save_json_stream().
+        """
+        full_filename = self._prepare_json_file(filename)
+
+        if not full_filename:
+            return False
 
         try:
             with xbmcvfs.File(full_filename, "w") as file:
@@ -300,8 +365,58 @@ class Backup:
                 )
                 file.write(text)
 
-            log_debug(f"Saved '{filename}' to {today}")
-            
+            log_debug(f"Saved '{filename}'")
+            return True
+
+        except Exception as e:
+            log_error("Failed to save '{}': {}".format(filename, e))
+            return False
+
+    def save_json_stream(self, filename, key, entries):
+        """
+        Stream a JSON array directly to the backup file.
+
+        Only one backup entry and its JSON representation are held at a time.
+        This avoids building a large backup list and a second large string with
+        json.dumps(), which can otherwise cause very high RAM usage on devices
+        with limited memory.
+        """
+        full_filename = self._prepare_json_file(filename)
+
+        if not full_filename:
+            return False
+
+        try:
+            with xbmcvfs.File(full_filename, "w") as file:
+                file.write("{\n")
+                file.write(f'  {json.dumps(key, ensure_ascii=False)}: [')
+
+                first = True
+
+                for entry in entries:
+                    if first:
+                        first = False
+                    else:
+                        file.write(",")
+
+                    text = json.dumps(
+                        entry,
+                        indent=2,
+                        ensure_ascii=False
+                    )
+
+                    # Keep the same readable indentation as the old output.
+                    text = "\n".join(
+                        "    " + line
+                        for line in text.splitlines()
+                    )
+
+                    file.write("\n")
+                    file.write(text)
+
+                file.write("\n  ]\n}\n")
+
+            log_debug(f"Saved '{filename}'")
             return True
 
         except Exception as e:

@@ -342,44 +342,61 @@ class VideoDB:
 
         return directories
 
-    def video_library_get_movies(self):
+    def _video_library_iter(self, method, result_key, properties, batch_size=200):
+        """Yield VideoLibrary items in bounded JSON-RPC batches."""
+        start = 0
 
-        result = self.rpc.call("VideoLibrary.GetMovies", {
-            "properties": [
-                "playcount",
-                "lastplayed",
-                "resume",
-                "dateadded",
-                "uniqueid",
-                "file",
-                "title",
-            ]
-        })
+        while True:
+            result = self.rpc.call(method, {
+                "properties": properties,
+                "limits": {"start": start, "end": start + batch_size},
+            })
 
-        if not result:
-            return []
+            if not result:
+                return
 
-        return result.get("result", {}).get("movies", [])
+            result_data = result.get("result", {})
+            items = result_data.get(result_key, [])
+            limits = result_data.get("limits", {})
 
+            for item in items:
+                yield item
 
-    def video_library_get_musicvideos(self):
+            returned = len(items)
+            total = limits.get("total")
 
-        result = self.rpc.call("VideoLibrary.GetMusicvideos", {
-            "properties": [
-                "playcount",
-                "lastplayed",
-                "resume",
-                "dateadded",
-                "uniqueid",
-                "file",
-                "title",
-            ]
-        })
+            # Drop references to the complete response before requesting the next batch.
+            del items
+            del result_data
+            del result
 
-        if not result:
-            return []
+            if returned == 0:
+                return
 
-        return result.get("result", {}).get("musicvideos", [])
+            start += returned
+
+            if total is not None and start >= total:
+                return
+            if returned < batch_size and total is None:
+                return
+
+    def video_library_get_movies(self, batch_size=200):
+        return self._video_library_iter(
+            "VideoLibrary.GetMovies",
+            "movies",
+            ["playcount", "lastplayed", "resume", "dateadded",
+             "uniqueid", "file", "title"],
+            batch_size,
+        )
+
+    def video_library_get_musicvideos(self, batch_size=200):
+        return self._video_library_iter(
+            "VideoLibrary.GetMusicvideos",
+            "musicvideos",
+            ["playcount", "lastplayed", "resume", "dateadded",
+             "uniqueid", "file", "title"],
+            batch_size,
+        )
 
     def video_library_get_tvshows(self):
 
@@ -495,19 +512,21 @@ class VideoDB:
             "lastplayed_col": "f.lastPlayed",
         }
 
-    def get_unknown_video_database_entries(self):
+    def get_unknown_video_database_entries(self, batch_size=200):
+        """Yield unknown-video rows in bounded DB batches instead of fetchall()."""
         conn = self.get_database_connection()
         if conn is None:
             log_error("No database connection available for unknown video backup")
-            return []
+            return
 
+        cursor = None
         try:
             cursor = conn.cursor()
             bookmark_schema = self._get_bookmark_schema(conn)
 
             if bookmark_schema is None:
                 log_error("Unsupported bookmark schema in Kodi database")
-                return []
+                return
 
             query = f"""
                 SELECT
@@ -529,55 +548,62 @@ class VideoDB:
 
             try:
                 cursor.execute(query)
-                raw_rows = cursor.fetchall()
             except Exception as e:
                 log_error(f"Unknown-video query failed for Kodi bookmark schema: {e}")
-                raw_rows = []
+                return
 
-            if not raw_rows:
-                log_debug("Could not read unknown video entries from Kodi database")
-                return []
+            found = False
+            while True:
+                rows = cursor.fetchmany(batch_size)
+                if not rows:
+                    break
 
-            entries = []
-            for row in raw_rows:
-                if len(row) < 10:
-                    continue
+                found = True
+                for row in rows:
+                    if len(row) < 10:
+                        continue
 
-                file_id, path_base, file_name, playcount, lastplayed, dateadded, resume_time, total_time, bookmark_playcount, bookmark_lastplayed = row[:10]
+                    file_id, path_base, file_name, playcount, lastplayed, dateadded, resume_time, total_time, bookmark_playcount, bookmark_lastplayed = row[:10]
+                    path_base = path_base or ""
+                    file_name = file_name or ""
 
-                path_base = path_base or ""
-                file_name = file_name or ""
-                if path_base and not path_base.endswith(("/", "\\")) and not file_name.startswith(("/", "\\")):
-                    full_path = normalize(f"{path_base}/{file_name}")
-                else:
-                    full_path = normalize(f"{path_base}{file_name}")
+                    if path_base and not path_base.endswith(("/", "\\")) and not file_name.startswith(("/", "\\")):
+                        full_path = normalize(f"{path_base}/{file_name}")
+                    else:
+                        full_path = normalize(f"{path_base}{file_name}")
 
-                if not full_path:
-                    continue
+                    if not full_path:
+                        continue
 
-                resume_value = 0
-                if resume_time not in (None, ''):
                     try:
-                        resume_value = int(resume_time)
+                        resume_value = int(resume_time) if resume_time not in (None, "") else 0
                     except (TypeError, ValueError):
                         resume_value = 0
 
-                entries.append({
-                    "idFile": file_id,
-                    "file": full_path,
-                    "playcount": int(playcount) if playcount not in (None, '') else 0,
-                    "lastplayed": lastplayed or bookmark_lastplayed,
-                    "dateadded": dateadded,
-                    "resume": {
-                        "position": resume_value,
-                        "total": int(total_time) if total_time not in (None, '') else 0,
-                    },
-                    "bookmark_playcount": bookmark_playcount,
-                    "bookmark_lastplayed": bookmark_lastplayed,
-                })
+                    yield {
+                        "idFile": file_id,
+                        "file": full_path,
+                        "playcount": int(playcount) if playcount not in (None, "") else 0,
+                        "lastplayed": lastplayed or bookmark_lastplayed,
+                        "dateadded": dateadded,
+                        "resume": {
+                            "position": resume_value,
+                            "total": int(total_time) if total_time not in (None, "") else 0,
+                        },
+                        "bookmark_playcount": bookmark_playcount,
+                        "bookmark_lastplayed": bookmark_lastplayed,
+                    }
 
-            return entries
+                del rows
+
+            if not found:
+                log_debug("Could not read unknown video entries from Kodi database")
         finally:
+            if cursor is not None:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
             try:
                 conn.close()
             except Exception:

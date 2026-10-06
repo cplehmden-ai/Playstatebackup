@@ -21,11 +21,12 @@ class JsonRPC:
         log_debug(str(request))
 
         request_json = json.dumps(request)
-
         response_json = xbmc.executeJSONRPC(request_json)
+        del request_json
 
         try:
             response = json.loads(response_json)
+            del response_json
         except Exception as e:
             log_error("Invalid JSON response: {}".format(e))
             log_error(response_json)
@@ -34,7 +35,9 @@ class JsonRPC:
         if "error" in response and log_rpc_errors:
             log_error(str(response["error"]))
 
-        log_debug(str(response))
+        # Do not stringify complete library responses here. Large GetMovies /
+        # GetEpisodes responses can temporarily duplicate many MB of data.
+        log_debug("JSON-RPC response received: {}".format(method))
 
         return response
     

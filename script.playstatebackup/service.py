@@ -1,6 +1,7 @@
 import xbmc
 import xbmcaddon
 import time
+import gc
 from lib.backup import Backup
 from lib.videodb import VideoDB
 from lib.jsonrpc import JsonRPC
@@ -94,7 +95,14 @@ class AutoBackupService:
             
             successful = sum(1 for v in results.values() if v)
             log_info(f"Backup finished (automatic): {successful}/{len(results)} operations successful")
-            
+
+            del results
+            backup.release_memory()
+            del backup
+            del videodb
+            del rpc
+            gc.collect()
+
             return True
         except Exception as e:
             log_error(f"Automatic backup failed: {e}")
