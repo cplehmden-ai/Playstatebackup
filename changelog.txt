@@ -1,1 +1,6 @@
 1.0.0.0 - Initial Release
+
+1.0.3
+- Significantly reduced memory usage during backups
+- Improved memory cleanup after completed backups
+- Improved stability on low-memory devices
